@@ -23,7 +23,8 @@ export async function listEnrichedAdminRecords(collectionName){
   const orderById=new Map(orders.map(item=>[item.id,item]));
   return records.map(record=>{
     const order=orderById.get(record.orderId)||(record.entityType==='order'?orderById.get(record.entityId):null)||null;
-    const courierId=record.courierId||order?.courierId||(record.actorRole==='courier'?record.actorUid:null);
+    const entityIsCourier=['user','courier','license'].includes(record.entityType);
+    const courierId=record.courierId||order?.courierId||(entityIsCourier?record.entityId:null)||(record.actorRole==='courier'?record.actorUid:null);
     const courier=courierById.get(courierId)||userById.get(courierId)||null;
     const client=clientById.get(record.clientId||order?.clientId)||clientByPhone.get(phoneKey(record.phone||record.clientPhone||order?.phone))||null;
     const actor=userById.get(record.actorUid)||courierById.get(record.actorUid)||null;
