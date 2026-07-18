@@ -1,0 +1,1 @@
+import{n as e}from"./Logo-CODs7XKR.js";var t=e();function n({eyebrow:e,title:n,action:r}){return(0,t.jsxs)(`div`,{className:`pageTitle`,children:[(0,t.jsxs)(`div`,{children:[(0,t.jsx)(`span`,{className:`eyebrow`,children:e}),(0,t.jsx)(`h2`,{children:n})]}),r]})}export{n as t};

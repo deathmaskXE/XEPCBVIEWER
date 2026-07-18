@@ -1,0 +1,1 @@
+import{_ as e,m as t,n,r,v as i}from"./firebaseConfig-D0dzpPN_.js";var a=()=>{if(!r||!n)throw Error(`Firebase no está configurado`);return n},o=(n,r,...o)=>t(i(a(),n),e(`courierId`,`==`,r),...o);export{a as n,o as t};

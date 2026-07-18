@@ -1,0 +1,1 @@
+import{n as e}from"./Logo-CODs7XKR.js";var t=e();function n({label:e,value:n,note:r}){return(0,t.jsxs)(`div`,{className:`metric`,children:[(0,t.jsx)(`span`,{children:e}),(0,t.jsx)(`b`,{children:n}),(0,t.jsx)(`small`,{children:r})]})}export{n as t};
