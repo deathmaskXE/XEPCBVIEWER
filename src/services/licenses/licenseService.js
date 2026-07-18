@@ -1,0 +1,4 @@
+import {doc,requireDb,serverTimestamp,setDoc} from '../firebase/firestoreHelpers';import {writeAudit} from '../audit/auditService';
+const DAY=86400000;
+export async function activateLicense(actor,courierId,type='trial',customDays){const days=customDays||(type==='trial'?1:183),now=new Date(),expires=new Date(now.getTime()+days*DAY);const data={courierId,type,status:type==='trial'?'trial':'active',startsAt:now,expiresAt:expires,durationDays:days,activatedBy:actor.uid,activatedAt:serverTimestamp(),updatedAt:serverTimestamp()};await setDoc(doc(requireDb(),'licenses',courierId),data,{merge:true});await writeAudit(actor,'license_activated','license',courierId,{newData:{type,status:data.status,durationDays:days}});return data}
+export const licenseIsActive=license=>license&&['trial','active'].includes(license.status)&&new Date(license.expiresAt?.toDate?.()||license.expiresAt).getTime()>Date.now();

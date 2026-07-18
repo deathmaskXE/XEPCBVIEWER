@@ -1,0 +1,1 @@
+export default function PublicTimeline({items=[]}){return <div className="publicTimeline">{items.map((x,i)=><div className={x.completed||i===0?'done':''} key={x.label||x}><i/>{x.label||x}</div>)}</div>}

@@ -1,0 +1,1 @@
+export default function StarRating({value=0,onChange,readOnly=false}){return <div aria-label={`${value} de 5 estrellas`}>{[1,2,3,4,5].map(n=><button type="button" disabled={readOnly} onClick={()=>onChange?.(n)} key={n} className="iconBtn" aria-label={`${n} estrellas`}>{n<=value?'★':'☆'}</button>)}</div>}

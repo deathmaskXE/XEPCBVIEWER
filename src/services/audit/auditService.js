@@ -1,0 +1,2 @@
+import {addDoc,collection} from 'firebase/firestore';import {requireDb,serverTimestamp} from '../firebase/firestoreHelpers';
+export const writeAudit=(actor,action,entityType,entityId,extra={})=>addDoc(collection(requireDb(),'auditLogs'),{actorUid:actor.uid,actorRole:actor.role,action,entityType,entityId,reason:extra.reason||'',previousData:extra.previousData||null,newData:extra.newData||null,createdAt:serverTimestamp()});

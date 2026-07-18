@@ -1,0 +1,2 @@
+import {useEffect,useMemo,useState} from 'react';
+export function useCountdown(expiresAt){const [now,setNow]=useState(Date.now());useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);return useMemo(()=>{const end=expiresAt?.toDate?.()?.getTime?.()||new Date(expiresAt||0).getTime(),remaining=Math.max(0,end-now);return{remaining,expired:remaining<=0,days:Math.floor(remaining/86400000),hours:Math.floor(remaining/3600000)%24,minutes:Math.floor(remaining/60000)%60,seconds:Math.floor(remaining/1000)%60}},[expiresAt,now])}
