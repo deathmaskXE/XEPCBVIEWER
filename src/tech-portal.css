@@ -39,3 +39,7 @@
 .tech-file-kind-buttons{justify-content:center;align-items:center;gap:16px;margin:10px auto 18px;}
 .tech-file-kind-buttons button{min-width:125px;text-align:center;justify-content:center;border:1px solid #d8faff;box-shadow:0 0 7px rgba(255,255,255,.5),0 0 16px rgba(0,226,255,.55);transition:box-shadow .2s ease,transform .2s ease;}
 .tech-file-kind-buttons button:hover,.tech-file-kind-buttons button.active{border-color:#fff;box-shadow:0 0 10px rgba(255,255,255,.85),0 0 23px rgba(0,234,255,.95);}
+
+.xe-license-price{padding:14px;border:1px solid #47dff2;border-radius:12px;text-align:center;box-shadow:0 0 16px #27dcff44;color:#e8fcff!important}.xe-license-price strong{font-size:1.4rem;color:#fff;text-shadow:0 0 10px #35e6ff}
+
+.xe-payment-details{padding:16px;border:1px solid #53cfe9;border-radius:14px;background:#0d2633;box-shadow:0 0 16px #00dfff24}.xe-payment-details h3{color:#bff9ff;margin:0 0 12px}.xe-payment-details a{color:#8ceeff;text-decoration:underline;overflow-wrap:anywhere}.xe-pay-field{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff1c}.xe-pay-field span{color:#accad5;min-width:95px}.xe-pay-field strong{overflow-wrap:anywhere;flex:1;min-width:150px}.xe-pay-field button{padding:7px 10px;background:#17485b;color:#eaffff;border:1px solid #68dced;border-radius:8px;cursor:pointer}

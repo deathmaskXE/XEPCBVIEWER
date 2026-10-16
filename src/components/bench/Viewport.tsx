@@ -161,6 +161,19 @@ export function Viewport({ board, layers = DEFAULT_BOARD_LAYERS, projectId, over
   };
 
   const originX = prep ? (prep.bounds.minX + prep.bounds.maxX) / 2 : 0;
+  const previousMirror = useRef(mirror);
+  // Conservar el centro FÍSICO al cambiar entre las caras de la misma placa.
+  // La vista trasera está reflejada; por eso se refleja también el centro de cámara.
+  useEffect(() => {
+    if (previousMirror.current !== mirror && prep) {
+      cam.current.x = prep.bounds.minX + prep.bounds.maxX - cam.current.x;
+      previousMirror.current = mirror;
+      requestDraw();
+    } else {
+      previousMirror.current = mirror;
+    }
+  }, [mirror, prep]);
+
 
   const project = (x: number, y: number, mirrorOn = latest.current.mirror) => {
     const { w, h } = size.current;
