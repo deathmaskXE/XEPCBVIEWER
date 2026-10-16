@@ -11,7 +11,8 @@ service cloud.firestore {
   match /techUsers/{uid} {
    allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
    allow list: if isAdmin();
-   allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['email','displayName','country','role','status','createdAt','trialStartedAt']) && request.resource.data.role == 'client' && request.resource.data.status == 'trial' && request.resource.data.trialStartedAt == request.time && request.resource.data.createdAt == request.time && request.resource.data.email == request.auth.token.email && request.resource.data.country in ['MX','INT'];
+   allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['email','displayName','country','role','status','createdAt','trialApproved']) && request.resource.data.role == 'client' && request.resource.data.status == 'trial' && request.resource.data.trialApproved == true && !('trialStartedAt' in request.resource.data) && request.resource.data.createdAt == request.time && request.resource.data.email == request.auth.token.email && request.resource.data.country in ['MX','INT'];
+   allow update: if signedIn() && request.auth.uid == uid && resource.data.status == 'trial' && resource.data.trialApproved == true && !('trialStartedAt' in resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trialStartedAt']) && request.resource.data.trialStartedAt == request.time;
    allow create, update, delete: if isAdmin() && uid != request.auth.uid && request.resource.data.role == 'client';
   }
   match /techCatalog/{id} {allow read: if isAdmin() || hasAccess();allow create,update,delete: if isAdmin();}
