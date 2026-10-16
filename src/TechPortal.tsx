@@ -32,7 +32,7 @@ export function TechPortal(){
  const admin=profile?.role==='admin'&&(profile?.status==='approved'||profile?.status==='active');
  const expires=dateOf(profile?.expiresAt??profile?.activeUntil);
  const trialStart=dateOf(profile?.trialStartedAt);
- const trialRemaining=trialStart?Math.max(0,Math.ceil((trialStart.getTime()+300000-now)/1000)):0;
+ const trialRemaining=trialStart?Math.max(0,Math.ceil((trialStart.getTime()+180000-now)/1000)):0;
  const trialActive=profile?.status==='trial'&&trialRemaining>0;
  const allowed=admin||trialActive||(profile?.status==='active'&&!!expires&&expires.getTime()>now);
  useEffect(()=>{if(!db||!user||!allowed)return;return onSnapshot(collection(db,'techCatalog'),s=>setItems(s.docs.map(d=>({id:d.id,...d.data()} as Item))),e=>setError('No se pudo leer el catálogo: '+e.message));},[user,allowed]);
@@ -40,7 +40,7 @@ export function TechPortal(){
  useEffect(()=>{if(!db||!user||!admin)return;return onSnapshot(collection(db,'techUsers'),s=>setAccounts(s.docs.map(d=>({id:d.id,...d.data()} as Account))),e=>setError('No se pudo consultar las licencias: '+e.message));},[user,admin]);
  const filtered=useMemo(()=>items.filter(x=>(categoryFilter==='Todas'||x.category===categoryFilter)&&`${x.title} ${x.category} ${x.brand||''} ${x.model||''} ${x.description||''}`.toLowerCase().includes(search.toLowerCase())),[items,search,categoryFilter]);
  async function login(e:React.FormEvent){e.preventDefault();setError('');try{await signInWithEmailAndPassword(auth!,email,password);}catch{setError('No se pudo iniciar sesión. Comprueba tus credenciales.');}}
- async function signup(e:React.FormEvent){e.preventDefault();if(!auth||!db)return;setBusy(true);setError('');try{const result=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,'techUsers',result.user.uid),{email:result.user.email||email,displayName:registerName.trim(),country,role:'client',status:'trial',trialStartedAt:serverTimestamp(),createdAt:serverTimestamp()});setNotice('Tu prueba gratuita de 5 minutos comenzó.');}catch(e){setError('Registro: '+errMessage(e));}finally{setBusy(false);}}
+ async function signup(e:React.FormEvent){e.preventDefault();if(!auth||!db)return;setBusy(true);setError('');try{const result=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,'techUsers',result.user.uid),{email:result.user.email||email,displayName:registerName.trim(),country,role:'client',status:'trial',trialStartedAt:serverTimestamp(),createdAt:serverTimestamp()});setNotice('Tu prueba gratuita de 3 minutos comenzó.');}catch(e){setError('Registro: '+errMessage(e));}finally{setBusy(false);}}
  async function submitPayment(e:React.FormEvent){
   e.preventDefault();if(!user||!db)return;
   if(country==='MX'&&method!=='spei'){setError('México utiliza transferencia SPEI.');return;}
