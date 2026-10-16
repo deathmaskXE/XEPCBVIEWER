@@ -1,10 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
-  function signedIn(){return request.auth != null;}
-  function admin(){return signedIn() && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.role == 'admin';}
-  function active(){return signedIn() && (admin() || (get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.status == 'active' && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.expiresAt > request.time));}
-  match /techUsers/{uid} {allow read: if signedIn() && (request.auth.uid == uid || admin());allow write: if false;}
-  match /techCatalog/{id} {allow read: if active();allow create,update,delete: if admin();}
+  function signedIn() { return request.auth != null; }
+  function legacyAdmin() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved'; }
+  function techAdmin() { return signedIn() && exists(/databases/$(database)/documents/techUsers/$(request.auth.uid)) && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.role == 'admin'; }
+  function admin() { return legacyAdmin() || techAdmin(); }
+  function active() { return signedIn() && (admin() || (exists(/databases/$(database)/documents/techUsers/$(request.auth.uid)) && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.status == 'active' && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.expiresAt > request.time)); }
+  match /users/{uid} { allow read: if signedIn() && request.auth.uid == uid; }
+  match /techUsers/{uid} { allow read: if signedIn() && (request.auth.uid == uid || admin()); allow write: if false; }
+  match /techCatalog/{id} { allow read: if active(); allow create, update, delete: if admin(); }
  }
 }
