@@ -1,3 +1,4 @@
+import {libraryFileUrl} from './library-url';
 import React,{useEffect,useMemo,useState} from 'react';
 import {initializeApp,getApps} from 'firebase/app';
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,User} from 'firebase/auth';
@@ -39,7 +40,7 @@ export function TechPortal(){
  useEffect(()=>{if(!db||!user||!admin)return;return onSnapshot(collection(db,'techUsers'),s=>setAccounts(s.docs.map(d=>({id:d.id,...d.data()} as Account))),e=>setError('No se pudo consultar las licencias: '+e.message));},[user,admin]);
  // La biblioteca local se publica mediante un índice generado en cada build.
  // Solo se consulta tras validar el acceso a la aplicación.
- useEffect(()=>{if(!allowed){setFolderItems([]);return;}const controller=new AbortController();fetch(`${import.meta.env.BASE_URL}biblioteca/index.json`,{signal:controller.signal,cache:'no-store'}).then(r=>{if(!r.ok)throw Error(`HTTP ${r.status}`);return r.json();}).then(data=>{if(!Array.isArray(data))throw Error('Índice de biblioteca inválido');setFolderItems(data.filter(x=>x&&typeof x.id==='string'&&typeof x.url==='string'&&typeof x.category==='string').map(x=>({...x,url:`${window.location.origin}${import.meta.env.BASE_URL}${x.url}`})) as Item[]);}).catch(e=>{if(!controller.signal.aborted)setError('Índice de biblioteca: '+errMessage(e));});return ()=>controller.abort();},[allowed]);
+ useEffect(()=>{if(!allowed){setFolderItems([]);return;}const controller=new AbortController();fetch(`${import.meta.env.BASE_URL}biblioteca/index.json`,{signal:controller.signal,cache:'no-store'}).then(r=>{if(!r.ok)throw Error(`HTTP ${r.status}`);return r.json();}).then(data=>{if(!Array.isArray(data))throw Error('Índice de biblioteca inválido');setFolderItems(data.filter(x=>x&&typeof x.id==='string'&&typeof x.url==='string'&&typeof x.category==='string').map(x=>({...x,url:libraryFileUrl(x.url)})) as Item[]);}).catch(e=>{if(!controller.signal.aborted)setError('Índice de biblioteca: '+errMessage(e));});return ()=>controller.abort();},[allowed]);
  const items=folderItems;
  const availableBrands=useMemo(()=>Array.from(new Set(items.filter(x=>x.category===categoryFilter).map(x=>x.brand).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'es')),[items,categoryFilter]);
  const availableModels=useMemo(()=>Array.from(new Set(items.filter(x=>x.category===categoryFilter&&x.brand===brandFilter).map(x=>x.model).filter(Boolean))) as string[],[items,categoryFilter,brandFilter]);
