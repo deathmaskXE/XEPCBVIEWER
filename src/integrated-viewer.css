@@ -2,3 +2,6 @@
 /* Filtros por categoría, consola y modelo */
 .xe-kind-row select {background:#0b1a29;color:#e5f7ff;border:1px solid #355b71;border-radius:6px;padding:7px;max-width:100%;min-width:0;}
 .xe-kind-row {flex-wrap:wrap;}
+
+.xe-layerbar button{display:inline-flex;align-items:center;gap:4px;border:1px solid #386b85;border-radius:5px;background:#0b2538;color:#b5eaff;padding:4px 7px;cursor:pointer;white-space:nowrap}
+.xe-board-render{position:relative}.xe-mouse-guide{position:absolute;z-index:8;pointer-events:none;width:1px;height:1px}.xe-mouse-guide:before,.xe-mouse-guide:after{content:"";position:absolute;background:rgba(0,240,255,.58);pointer-events:none}.xe-mouse-guide:before{height:1px;width:200vw;left:-100vw;top:0}.xe-mouse-guide:after{width:1px;height:200vh;top:-100vh;left:0}

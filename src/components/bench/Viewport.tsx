@@ -347,7 +347,7 @@ export function Viewport({ board, layers = DEFAULT_BOARD_LAYERS, projectId, over
 
       if (hotNet && !selectedGround) {
         ctx.beginPath();
-        const dots: { x: number; y: number }[] = [];
+        
         for (const segment of live.segments) {
           if (!segmentLayerVisible(segment, layerRef.current)) continue;
           if (segment.net !== hotNet || (strictFace && !segment.layer?.match(/^In\d+\.Cu$/) && ((strictFace && !segment.side) || (segment.side && !acceptsSide(segment.side, current.side))))) continue;
@@ -355,7 +355,7 @@ export function Viewport({ board, layers = DEFAULT_BOARD_LAYERS, projectId, over
           const b = project(segment.x2, segment.y2);
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
-          dots.push(a, b);
+
         }
         ctx.strokeStyle = "#071e4a";
         ctx.shadowColor = "#00f5ff"; ctx.shadowBlur = 8;
@@ -363,13 +363,6 @@ export function Viewport({ board, layers = DEFAULT_BOARD_LAYERS, projectId, over
         ctx.shadowBlur = 0;
         ctx.strokeStyle = PAL.trace;
         ctx.lineWidth = 2.5; ctx.stroke();
-        ctx.fillStyle = PAL.trace;
-        const radius = Math.max(2.2, Math.min(5, 3.2));
-        for (const dot of dots) {
-          ctx.beginPath();
-          ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
-          ctx.fill();
-        }
         ctx.lineWidth = 1;
       }
     }
