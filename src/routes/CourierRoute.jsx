@@ -1,2 +1,0 @@
-import {Navigate} from 'react-router-dom';import {useAuth} from '../contexts/AuthContext';import ProtectedRoute from './ProtectedRoute';
-export default function CourierRoute({children}){const {user}=useAuth();if(user?.status==='pending')return <Navigate to="/pending"/>;if(['suspended','blocked'].includes(user?.status))return <Navigate to="/suspended"/>;return <ProtectedRoute>{user?.role==='courier'&&user?.status==='approved'?children:<Navigate to="/access-denied" replace/>}</ProtectedRoute>}

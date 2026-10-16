@@ -1,1 +1,0 @@
-export default function DailyBars({orders=[]}){return <div className="panel bars"><h3>Ganancias por pedido</h3>{orders.map((o,i)=><div key={o.id}><span>{o.number||o.orderNumber}</span><i style={{width:`${Math.min(100,45+i*14)}%`}}/><b>Q{o.fee||0}</b></div>)}</div>}

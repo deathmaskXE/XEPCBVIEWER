@@ -1,69 +1,63 @@
-# XE Delivery
+# XE Game Viewer
 
-Aplicación web para repartidores independientes: mandados, compras, mensajería, seguimiento público, reputación y rendimiento. Es una sola aplicación multi-repartidor; toda información privada se separa mediante `courierId`, igual al UID de Firebase Authentication.
+Visor de boardview, capas de Photoshop, fotos superpuestas y diagramas. Los archivos se almacenan en tu navegador (IndexedDB); no se envían a un servidor.
 
-## Tecnologías
+## Probar en computadora
 
-React, Vite, React Router con `HashRouter`, Firebase Authentication y Firestore modular, Chart.js, jsPDF, html2canvas, Leaflet/OpenStreetMap y Lucide. No utiliza Storage, Analytics, Realtime Database, cartera, saldo ni retiros.
+Instala Node.js 22 o superior y ejecuta `npm ci` y `npm run dev`. Abre http://localhost:8080.
 
-## Instalación y ejecución
+## Publicar desde GitHub
 
-1. Instala Node.js 20 o superior.
-2. Ejecuta `npm install`.
-3. Copia `.env.example` como `.env` y completa únicamente las variables públicas de configuración web de Firebase.
-4. Ejecuta `npm run dev`.
-5. Para validar producción: `npm run build` y `npm run preview`.
+Sube **el contenido de esta carpeta** a la raíz del repositorio (`package.json`, `index.html`, `src/` y `.github/` deben verse en la raíz). En **Settings → Pages → Build and deployment**, elige **GitHub Actions**. El flujo **Publicar XE Game Viewer** compilará y publicará automáticamente cada cambio en `main` o `master`. La URL será `https://TU-USUARIO.github.io/NOMBRE-DEL-REPOSITORIO/`.
 
-La auditoría final del 18 de julio de 2026 confirmó una instalación reproducible y una compilación de producción correcta. El proyecto usa carga diferida por página y `HashRouter`, por lo que no necesita reescrituras de rutas en GitHub Pages.
+Abrir el repositorio de código en GitHub por sí solo no ejecuta la aplicación.
 
-Si no hay configuración Firebase, la interfaz entra en modo demostración con datos ficticios. También puede activarse de forma explícita con `VITE_DEMO_MODE=true`. Nunca debe activarse en producción.
+## Compatibilidad
 
-## Preparar Firebase
+Admite BRD, BRD2, BVR, XinZhiZao PCB, GenCAD, ASCII de Altium, CSV, JSON, PNG/JPG/WEBP, PDF/SVG y PSD/PSB según el soporte del parser. Algunos `.pcb` de otros fabricantes y formatos cifrados pueden no ser compatibles.
 
-1. En un proyecto Firebase existente, activa Authentication por correo/contraseña y Cloud Firestore en modo producción. No actives Analytics ni Storage.
-2. Registra una aplicación web y copia sus valores a `.env`; estas claves identifican la app y no sustituyen las reglas de seguridad.
-3. Publica reglas e índices con Firebase CLI: `firebase deploy --only firestore`.
-4. Crea manualmente el primer usuario administrador en Authentication, copia su UID y crea `users/{uid}` con `uid`, `role: "admin"`, `status: "approved"`, `displayName`, `email`, `phone`, `createdAt` y `updatedAt`. No guardes contraseñas en Firestore.
-5. Conserva la cuenta administrativa con autenticación multifactor y acceso restringido a la consola.
+## Carpetas
 
-## Colecciones
+**Abrir carpeta** permite elegir una carpeta normal, sin comprimirla, en Chrome o Edge. También puedes arrastrarla desde el explorador de archivos a la página. El visor recorre las subcarpetas y muestra PNG, JPG, WEBP, GIF, BMP y PDF en una galería. Toca una miniatura para abrirla; al cerrar la vista regresas a la galería. Se guarda una copia local en este navegador. Al abrir un archivo suelto, el visor crea un proyecto nuevo y cierra la vista anterior para evitar que las imágenes se superpongan. Si seleccionas una placa y una foto juntas, la foto sí se usa como overlay de esa placa.
 
-`users`, `couriers`, `courierAccessRoutes`, `licenses`, `clients`, `orders`, `orders/{id}/history`, `ratings`, `complaints`, `auditLogs` y `publicTracking`. Las consultas privadas siempre deben incluir `where('courierId','==',auth.currentUser.uid)`; las reglas vuelven a comprobar la propiedad. `publicTracking` contiene solo una proyección mínima y nunca notas, ganancias, correo, credencial o auditoría.
+## Zoom
 
-## Licencias y rutas privadas
+En la placa usa los botones +/− o la rueda del mouse; **Encuadrar** vuelve a mostrar la placa completa. En el panel de PSD, imágenes y PDF también hay controles +/− y **Encuadrar**. En PSD e imágenes puedes arrastrar la vista después de acercar.
 
-La prueba normal usa `type: trial`, `status: trial` y `expiresAt` a 24 horas. La licencia de seis meses usa `type: six_months` y `status: active`. El contador lee el timestamp persistido y nunca lo reinicia localmente. Renovar o cambiar fechas es una operación administrativa auditada.
+## Traducción de texto en imágenes
 
-Una ruta se guarda en `courierAccessRoutes/{token}`. Al regenerarla, una Cloud Function/transacción administrativa debe desactivar la anterior y crear un token criptográficamente aleatorio. La ruta no reemplaza el login: después de autenticar, el UID debe coincidir con `courierId`. No coloque datos sensibles en el token o URL.
+Abre una imagen, PSD o PDF y pulsa **Traducir**. Elige el idioma original y el idioma de destino (español por defecto), pulsa **Leer texto** y revisa/corrige lo reconocido. Después pulsa **Traducir texto**. Se incluyen inglés, español, portugués, francés, alemán, italiano, japonés, coreano, chino simplificado y ruso. En los PDF puedes indicar la página; si es escaneada, se aplica OCR. También aparece el botón de traducción junto a cada overlay.
 
-## Seguimiento público y confirmación de una hora
+El OCR se ejecuta en el navegador con Tesseract.js y descarga los datos del idioma en el primer uso. Chrome de escritorio puede traducir con su modelo local; en otros navegadores o si el modelo no está disponible, el botón de traducción usa MyMemory. En ese caso se envía solo el texto detectado, nunca el archivo de imagen. El servicio externo requiere conexión y puede tener límites de uso.
 
-El navegador público solo lee `publicTracking/{trackingToken}`. La colección privada `orders` no está abierta al público. Una Cloud Function debe copiar únicamente campos permitidos cada vez que cambia un pedido.
+### Giro y contornos
+Los botones de giro cambian la orientación del boardview en pasos de 90°. El contorno corresponde a la placa y depende de las líneas incluidas en el archivo; no representa la carcasa completa del control o consola. Los PCB XZZ conservan sus bordes y curvas en vez de reemplazarlos por un rectángulo.
 
-Al entregar, el backend establece `waiting_client_confirmation`, `deliveredAt` y `autoConfirmAt = deliveredAt + 1 hora`. Una función programada completa pedidos vencidos. Una reconciliación en el cliente puede mejorar la experiencia, pero no garantiza ejecución cuando ninguna página está abierta y no debe tener permisos para confirmar arbitrariamente.
+Los `.bin` se reconocen por su contenido si usan un formato ya compatible (XZZ, BRD, BVR, JSON, etc.). Los BIN de firmware o de formatos propietarios desconocidos requieren otro lector y muestran un aviso.
 
-## Funciones backend recomendadas (plan Blaze)
+### NexusBV web
+La pestaña NexusBV carga https://web.nexusbv.net/ en una vista integrada. Depende de la disponibilidad y permisos de incrustación del sitio externo. Abrir aparte permite usarlo en otra pestaña si está bloqueado. Cada visor administra sus archivos de manera independiente; no se transfieren automáticamente archivos de XE a NexusBV. La pestaña conserva su sesión mientras alternas entre visores, hasta recargar la página.
 
-- `syncPublicTracking`: proyección segura de pedidos a `publicTracking`.
-- `submitPublicConfirmation`, `submitRating` y `submitComplaint`: endpoints con App Check, token de pedido, validación y protección de abuso.
-- `autoConfirmDeliveredOrders`: tarea programada para la hora límite.
-- `rotateCourierAccessRoute`: invalida la ruta anterior, crea la nueva y audita atómicamente.
-- `adminUpdateOrder`, `archiveOrder` y operaciones de licencia: verifican custom claims/rol y registran auditoría.
-- Agregados confiables de reputación, estadísticas y consecutivos por repartidor.
+### KiCad
+Abre placas .kicad_pcb de formato S-expression, incluidas las variantes module y footprint. Importa referencias, posiciones, rotaciones, pads como puntos, redes, pistas, vías y bordes Edge.Cuts (líneas, rectángulos, polígonos, círculos y arcos). La vista es simplificada: no reproduce las formas exactas de todos los pads, zonas de cobre, capas gráficas completas ni modelos 3D. Los proyectos .kicad_pro solo contienen configuración; se aceptan junto con los archivos del proyecto, pero no generan una vista. El formato BRD antiguo de KiCad no está implementado.
 
-Cloud Functions y tareas programadas normalmente requieren el plan Blaze. Los límites y precios deben comprobarse en la documentación vigente de Firebase antes de activarlo.
+### Comparar y esquemas
+Con una placa abierta, pulsa Comparar diagrama y elige PSD, PDF, imagen o .kicad_sch. Se abre al lado con zoom independiente; en pantallas pequeñas se apilan las vistas. El lector de esquemas KiCad muestra símbolos incrustados, cables, etiquetas y referencias en una vista SVG ampliable. Es una representación simplificada: no sustituye al editor KiCad ni carga automáticamente las hojas externas de un esquema jerárquico. Los PDF tienen selector de páginas.
 
-## GitHub Pages
 
-1. Para este repositorio usa `VITE_BASE_PATH=/XEDELIVERY/` en el entorno de compilación.
-2. Ejecuta `npm run build`.
-3. Publica con `npm run deploy`; el script usa `gh-pages -d dist`.
-4. En GitHub, selecciona la rama `gh-pages` como origen de Pages.
+## Vista completa y sincronización
+- Archivos de imagen/PDF/PSD se abren en el espacio completo del visor, con opción de vista dividida.
+- Las dos caras se arrastran en la misma dirección visual con ratón y táctil.
 
-`HashRouter` mantiene estables rutas como `#/acceso/{token}`, `#/seguimiento/{token}`, `#/courier/dashboard` y `#/admin/dashboard` al publicar en una subruta.
 
-## Prueba manual sugerida
+## Ventanas independientes (octubre 2026)
+- El primer documento (imagen, PSD/PSB, PDF, SVG) se abre en vista completa del área de trabajo.
+- Al abrir un segundo documento desde Abrir o desde el botón de una ventana, se activa la vista dividida con el anterior a la izquierda y el nuevo a la derecha.
+- Cada ventana dispone de Abrir archivo, Abrir carpeta y Elegir archivo. Cada una mantiene sus propios controles de zoom, arrastre, página PDF y capas PSD.
+- Los documentos adicionales se guardan dentro del proyecto activo para poder seleccionarlos independientemente.
+- La vista dividida también puede mostrar el BoardView a la izquierda y un documento a la derecha.
+- No se ha ejecutado compilación de producción: faltan dependencias de npm en el entorno offline. Revisar con `npm ci && npm run typecheck && npm run build`.
 
-Usa `#/seguimiento/demo-128` en modo demo. En Firebase real, crea primero el pedido privado y deja que `syncPublicTracking` produzca su vista pública. Prueba con dos cuentas courier y confirma que cada consulta incluye su UID, y que las reglas rechazan lecturas cruzadas desde el emulador.
 
-Consulta `IMPLEMENTATION_STATUS.md` antes de producción: enumera con precisión lo terminado y lo que necesita backend.
+## Capas de BoardView
+En cada cara se incluye el menú CAPAS para mostrar u ocultar componentes, cobre frontal, cobre trasero, pads, vías/testpoints y contorno. El botón de barra superior alterna capas sincronizadas e independientes. Las redes GND con nombre identificable se dibujan negras con brillo azul marino. Las capas disponibles dependen de los metadatos que el archivo origen proporciona; pistas sin información de cara se ocultan al desactivar una de las capas de cobre.

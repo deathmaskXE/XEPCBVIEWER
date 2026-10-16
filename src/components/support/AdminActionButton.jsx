@@ -1,1 +1,0 @@
-export default function AdminActionButton({children,onConfirm,disabled}){return <button className="button" disabled={disabled} onClick={()=>window.confirm('Confirma esta acción administrativa auditada')&&onConfirm?.()}>{children}</button>}

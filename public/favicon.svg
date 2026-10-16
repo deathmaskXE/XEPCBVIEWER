@@ -1,1 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="a"><stop stop-color="#50ffe1"/><stop offset="1" stop-color="#10a995"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="#071d1d"/><path d="M13 39h8l7-15h12l6 8h6v7h-5a8 8 0 0 1-15 0H27a8 8 0 0 1-15 0m7-5a5 5 0 1 0 0 10 5 5 0 0 0 0-10m20 0a5 5 0 1 0 0 10 5 5 0 0 0 0-10M5 25h19M9 20h18" fill="none" stroke="url(#a)" stroke-width="4" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><linearGradient id="metal" x2="1" y2="1"><stop stop-color="#8af0f7"/><stop offset=".52" stop-color="#3bd3e8"/><stop offset="1" stop-color="#9bb3c1"/></linearGradient></defs>
+  <rect width="64" height="64" rx="15" fill="#0b1b27"/>
+  <rect x="2" y="2" width="60" height="60" rx="13" fill="none" stroke="#3cd0e5" stroke-opacity=".65" stroke-width="2"/>
+  <path d="M13 20h15v5H19v5h8v5h-8v5h9v5H13zm18 0h7l5 8 5-8h6l-8 12 9 13h-7l-5-8-5 8h-7l9-13z" fill="url(#metal)"/>
+</svg>

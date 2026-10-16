@@ -1,1 +1,0 @@
-import {Link} from 'react-router-dom';import {ShieldCheck} from 'lucide-react';import Logo from '../../components/common/Logo';export default function StatusPage({title='Acceso no disponible',text='Contacta a soporte.'}){return <div className="statusPage"><Logo/><ShieldCheck/><h1>{title}</h1><p>{text}</p><Link className="button" to="/">Volver al inicio</Link></div>}

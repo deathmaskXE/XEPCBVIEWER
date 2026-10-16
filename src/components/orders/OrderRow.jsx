@@ -1,3 +1,0 @@
-import {ChevronRight,WalletCards} from 'lucide-react';import {Link} from 'react-router-dom';
-const money=n=>new Intl.NumberFormat('es-GT',{style:'currency',currency:'GTQ'}).format(n||0);
-export default function OrderRow({order}){return <Link className="orderRow" to={`/courier/orders/${order.id}`}><span className="orderIcon"><WalletCards/></span><span><b>{order.number||order.orderNumber}</b><small>{order.client||order.clientName} · {order.service}</small></span><span className={`status ${order.status}`}>{order.statusLabel||order.status}</span><strong>{money(order.fee)}</strong><ChevronRight/></Link>}

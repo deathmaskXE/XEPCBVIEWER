@@ -1,2 +1,0 @@
-import {doc,requireDb,serverTimestamp,setDoc} from '../firebase/firestoreHelpers';
-export const createCourierProfile=(uid,data)=>setDoc(doc(requireDb(),'couriers',uid),{courierId:uid,displayName:data.displayName,phone:data.phone,vehicle:data.vehicle,vehicleModel:data.vehicleModel,color:data.color,plates:data.plates||'',profilePhotoUrl:data.profilePhotoUrl||'',credentialReference:data.credentialReference||'pending',verificationStatus:'manual_pending',createdAt:serverTimestamp(),updatedAt:serverTimestamp()});

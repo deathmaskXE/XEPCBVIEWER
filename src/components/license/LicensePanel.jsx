@@ -1,1 +1,0 @@
-import Countdown from '../common/Countdown';export default function LicensePanel({license}){return <Countdown expiresAt={license?.expiresAt} label={license?.type==='trial'?'VERSIÓN DE PRUEBA':'LICENCIA ACTIVA'}/>}

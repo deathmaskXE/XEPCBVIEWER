@@ -1,3 +1,0 @@
-import {createContext,useContext,useEffect,useState} from 'react';import {doc,onSnapshot} from 'firebase/firestore';import {useAuth} from './AuthContext';import {db} from '../services/firebase/firebaseConfig';import {demoCourier} from '../data/demo';
-const C=createContext(null);export const useLicense=()=>useContext(C);
-export function LicenseProvider({children}){const {user,demo}=useAuth(),[license,setLicense]=useState(demo?demoCourier.license:null),[loading,setLoading]=useState(!demo);useEffect(()=>{if(demo||!user?.uid||!db){setLoading(false);return}return onSnapshot(doc(db,'licenses',user.uid),s=>{setLicense(s.exists()?s.data():null);setLoading(false)},()=>setLoading(false))},[user?.uid,demo]);return <C.Provider value={{license,loading}}>{children}</C.Provider>}

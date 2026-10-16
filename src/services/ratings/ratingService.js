@@ -1,2 +1,0 @@
-import {collection,getDocs,query,where} from 'firebase/firestore';import {requireDb} from '../firebase/firestoreHelpers';
-export const getCourierReputation=async uid=>{const snaps=await getDocs(query(collection(requireDb(),'ratings'),where('courierId','==',uid),where('type','==','client_to_courier'))),stars=snaps.docs.map(x=>Number(x.data().stars)||0),average=stars.length?stars.reduce((a,b)=>a+b,0)/stars.length:0;return{average,total:stars.length,distribution:[1,2,3,4,5].map(n=>stars.filter(x=>x===n).length)}};

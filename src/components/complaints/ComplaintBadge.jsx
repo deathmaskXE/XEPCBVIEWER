@@ -1,1 +1,0 @@
-export default function ComplaintBadge({status='open'}){const labels={open:'Abierta',under_review:'En revisión',resolved:'Resuelta',rejected:'Rechazada'};return <span className={`status ${status}`}>{labels[status]||status}</span>}

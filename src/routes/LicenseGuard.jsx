@@ -1,2 +1,0 @@
-import {Navigate} from 'react-router-dom';import {useLicense} from '../contexts/LicenseContext';import {useAuth} from '../contexts/AuthContext';import {licenseIsActive} from '../services/licenses/licenseService';
-export default function LicenseGuard({children}){const {license,loading}=useLicense(),{demo}=useAuth();if(loading)return <div className="statusPage">Validando licencia…</div>;return demo||licenseIsActive(license)?children:<Navigate to="/license-expired" replace/>}

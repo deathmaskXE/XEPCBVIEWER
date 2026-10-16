@@ -1,1 +1,0 @@
-export default function ClientCard({client}){return <article className="metric"><span>{client.trustStatus||'Sin evaluar'}</span><b>{client.name}</b><small>{client.phone} · {client.completedOrders||0} servicios</small></article>}

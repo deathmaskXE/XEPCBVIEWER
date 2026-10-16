@@ -1,2 +1,0 @@
-import {useCountdown} from '../../hooks/useCountdown';
-export default function Countdown({expiresAt,label='LICENCIA ACTIVA'}){const c=useCountdown(expiresAt);return <div className="licenseCard"><span>{c.expired?'LICENCIA VENCIDA':label}</span><div className="count"><b>{c.days}</b><small>días</small><b>{c.hours}</b><small>horas</small><b>{c.minutes}</b><small>min</small><b>{c.seconds}</b><small>seg</small></div></div>}

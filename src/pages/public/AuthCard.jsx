@@ -1,1 +1,0 @@
-import {Link} from 'react-router-dom';import Logo from '../../components/common/Logo';export default function AuthCard({title,sub,children}){return <div className="authPage"><Link to="/"><Logo/></Link><div className="authCard"><span className="eyebrow">ACCESO SEGURO</span><h2>{title}</h2><p>{sub}</p>{children}</div></div>}
