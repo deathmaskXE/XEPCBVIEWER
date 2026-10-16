@@ -34,3 +34,8 @@
 .tech-trial-timer{margin:12px auto;padding:10px 16px;max-width:640px;text-align:center;border:1px solid rgba(0,229,255,.4);border-radius:12px;background:rgba(0,20,33,.92);color:#a9f5ff;font-weight:800;letter-spacing:.08em;font-variant-numeric:tabular-nums}
 
 .tech-folder-filters{display:grid;gap:12px;margin:18px 0 24px}.tech-filter-buttons{display:flex;flex-wrap:wrap;gap:9px}.tech-filter-buttons button{border:1px solid #4e6676;background:#152330;color:#e8faff;border-radius:10px;padding:11px 15px;cursor:pointer;text-transform:capitalize}.tech-filter-buttons button.active{border-color:#00d9f4;box-shadow:0 0 14px #00d9f466;color:#fff}.tech-folder-filters p{color:#aabcc7}@media(max-width:600px){.tech-filter-buttons button{flex:1 1 43%;min-height:44px}}
+
+/* Acceso a tipos de biblioteca: centrado y resplandor cyan/blanco */
+.tech-file-kind-buttons{justify-content:center;align-items:center;gap:16px;margin:10px auto 18px;}
+.tech-file-kind-buttons button{min-width:125px;text-align:center;justify-content:center;border:1px solid #d8faff;box-shadow:0 0 7px rgba(255,255,255,.5),0 0 16px rgba(0,226,255,.55);transition:box-shadow .2s ease,transform .2s ease;}
+.tech-file-kind-buttons button:hover,.tech-file-kind-buttons button.active{border-color:#fff;box-shadow:0 0 10px rgba(255,255,255,.85),0 0 23px rgba(0,234,255,.95);}

@@ -5,3 +5,7 @@
 
 .xe-layerbar button{display:inline-flex;align-items:center;gap:4px;border:1px solid #386b85;border-radius:5px;background:#0b2538;color:#b5eaff;padding:4px 7px;cursor:pointer;white-space:nowrap}
 .xe-board-render{position:relative}.xe-mouse-guide{position:absolute;z-index:8;pointer-events:none;width:1px;height:1px}.xe-mouse-guide:before,.xe-mouse-guide:after{content:"";position:absolute;background:rgba(0,240,255,.58);pointer-events:none}.xe-mouse-guide:before{height:1px;width:200vw;left:-100vw;top:0}.xe-mouse-guide:after{width:1px;height:200vh;top:-100vh;left:0}
+
+.xe-kind-row:has(>button){justify-content:center;padding:10px;}
+.xe-kind-row>button{border-color:#baf7ff;box-shadow:0 0 7px #ffffff80,0 0 14px #00ddff99;}
+.xe-kind-row>button.xe-on{box-shadow:0 0 10px #ffffffb3,0 0 22px #00eaff;}

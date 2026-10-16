@@ -604,7 +604,7 @@ export function Viewport({ board, layers = DEFAULT_BOARD_LAYERS, projectId, over
 
   useEffect(() => {
     userMoved.current = false;
-    rotation.current = 0;
+    rotation.current = prep && (prep.bounds.maxY-prep.bounds.minY) > (prep.bounds.maxX-prep.bounds.minX) ? 90 : 0;
     fitted.current = null;
     if (!prep || size.current.w < 8) return;
     fitted.current = projectId ?? "";
