@@ -22,7 +22,7 @@ function dateLabel(v:unknown){return dateOf(v)?.toLocaleDateString('es-MX')||'Si
 function errMessage(e:unknown){return e instanceof Error?e.message:'Error desconocido';}
 export function TechPortal(){
  const [user,setUser]=useState<User|null>(null),[profile,setProfile]=useState<Profile|null>(null),[loading,setLoading]=useState(true),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[tab,setTab]=useState<'viewer'|'library'|'users'|'payments'>('library');
- [folderItems,setFolderItems]=useState<Item[]>([]),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[kindFilter,setKindFilter]=useState(''),[accounts,setAccounts]=useState<Account[]>([]),[search,setSearch]=useState(''),[categoryFilter,setCategoryFilter]=useState('Consolas');
+ const [folderItems,setFolderItems]=useState<Item[]>([]),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[kindFilter,setKindFilter]=useState(''),[accounts,setAccounts]=useState<Account[]>([]),[search,setSearch]=useState(''),[categoryFilter,setCategoryFilter]=useState('Consolas');
  const [register,setRegister]=useState(false),[registerName,setRegisterName]=useState(''),[country,setCountry]=useState('MX'),[method,setMethod]=useState<'spei'|'paypal'|'revolut'>('spei'),[reference,setReference]=useState(''),[amount,setAmount]=useState(''),[proof,setProof]=useState<File|null>(null),[payments,setPayments]=useState<Payment[]>([]),[reviewNotes,setReviewNotes]=useState<Record<string,string>>({}),[notice,setNotice]=useState('');
  const [now,setNow]=useState(Date.now());
  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return ()=>window.clearInterval(timer);},[]);
