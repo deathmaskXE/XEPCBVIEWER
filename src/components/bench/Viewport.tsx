@@ -546,11 +546,10 @@ export function Viewport({ board, layers = DEFAULT_BOARD_LAYERS, projectId, over
   };
 
   const emitZoom = (fallback?: { x: number; y: number }) => {
-    zoomSyncRef.current?.(cam.current.zoom, markerRef.current ?? fallback ?? unproject(size.current.w / 2, size.current.h / 2));
+    zoomSyncRef.current?.(cam.current.zoom, unproject(size.current.w / 2, size.current.h / 2));
   };
   const emitPan = (dx: number, dy: number) => {
-    if (panSyncRef.current) panSyncRef.current(dx, dy);
-    else zoomSyncRef.current?.(cam.current.zoom, unproject(size.current.w / 2, size.current.h / 2));
+    zoomSyncRef.current?.(cam.current.zoom, unproject(size.current.w / 2, size.current.h / 2));
   };
   useEffect(() => {
     if (!syncedPan || syncedPan.source === panSource) return;
