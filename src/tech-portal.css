@@ -49,3 +49,20 @@
 .tech-panel .tech-trial-activate:disabled{opacity:.7!important;cursor:wait!important;}
 .tech-panel .tech-trial-activate:focus-visible{outline:3px solid white;outline-offset:3px;}
 .tech-trial-summary{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}.tech-trial-summary span{background:#102f41;border:1px solid #31bdd3;border-radius:10px;color:#e4faff;padding:12px 16px}.tech-trial-summary b{color:#5cecff}.tech-nav button{white-space:normal}
+
+/* XEPCB · Obsidiana y oro champán · identidad premium */
+.tech-root{background:#101115;color:#f1e9d9;font-family:'Rajdhani','IBM Plex Sans',sans-serif}
+.tech-bar{background:linear-gradient(120deg,#0c0d10,#24211c 65%,#111216);border-bottom:1px solid #92754b;padding:10px 20px;box-shadow:0 5px 24px #0009}
+.tech-brand{color:#eed7a5;font-weight:900;letter-spacing:.12em;text-shadow:0 0 9px #d4a75c9c,0 2px 0 #4a3721,0 4px 1px #120f0a;font-size:clamp(18px,2.5vw,27px)}
+.tech-brand b{color:#f4e3c0;text-shadow:0 0 12px #b78c55aa,0 3px 1px #47311b}
+.tech-brand small{color:#b7a78c}
+.tech-metal-title{font-family:'Orbitron','IBM Plex Sans',sans-serif!important;font-weight:900!important;letter-spacing:.07em!important;color:#e7c98d!important;background:linear-gradient(180deg,#fff5d8 0%,#a58b60 27%,#f7e3b5 47%,#9d7542 68%,#e4c48d 100%);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 0 #4c3620) drop-shadow(0 6px 1px #16100b) drop-shadow(0 0 12px #b78c5366)}
+.tech-metal-title span{color:inherit!important}
+.tech-panel,.tech-tile{background:linear-gradient(145deg,#26252a,#15161a);border-color:#66553d;box-shadow:0 14px 40px #0007}
+.tech-primary{background:linear-gradient(160deg,#fff0c7,#c49b5c 58%,#a47d47);color:#1a1711;box-shadow:inset 0 1px #fff9dc,0 3px 14px #b18a4766}
+.tech-nav button,.tech-tile button,.tech-category-grid button{background:linear-gradient(160deg,#29282b,#191a1f);border-color:#6d573a;color:#f1e4ca;box-shadow:inset 0 1px #e2c18c22}
+.tech-nav button.selected,.tech-category-grid button.active{border-color:#e1b978;color:#f9d89c;box-shadow:0 0 13px #d5aa6255}
+.tech-category-grid button svg{color:#e4bc78;filter:drop-shadow(0 0 5px #d4a35d88)}
+.tech-tile span,.tech-hero-eyebrow{color:#dfbd82}
+.tech-panel input,.tech-panel select,.tech-admin-form input,.tech-admin-form select,.tech-search{background:#19191e;border-color:#756344;color:#f4ead9}
+@media(max-width:780px){.tech-bar{padding:8px 12px;gap:7px}.tech-brand small{display:none}.tech-nav{max-width:100%;overflow-x:auto;flex-wrap:nowrap}.tech-nav button{white-space:nowrap;padding:7px 9px;font-size:12px}.tech-content{padding:16px 12px}.tech-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

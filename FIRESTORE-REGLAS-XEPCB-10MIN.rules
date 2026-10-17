@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn(){return request.auth != null;}
+  function user(){return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;}
+  function admin(){return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && user().role == 'admin' && user().status == 'approved';}
+  function owner(data){return signedIn() && data.courierId == request.auth.uid;}
+  function sameCourier(){return request.resource.data.courierId == resource.data.courierId;}
+  function activeLicense(){return signedIn() && exists(/databases/$(database)/documents/techUsers/$(request.auth.uid)) && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.status == 'active' && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.expiresAt is timestamp && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.expiresAt > request.time;}
+  function activeTrial(){return signedIn() && exists(/databases/$(database)/documents/techUsers/$(request.auth.uid)) && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.status == 'trial' && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.trialStartedAt is timestamp && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.trialStartedAt <= request.time && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.trialStartedAt + duration.value(10,'m') > request.time;}
+  match /users/{uid} {
+   allow read: if signedIn() && (request.auth.uid == uid || admin());
+   allow create: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid && request.resource.data.role == 'courier' && request.resource.data.status == 'pending';
+   allow update: if admin() || (signedIn() && request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','phone','updatedAt']));
+   allow delete: if false;
+  }
+  match /techUsers/{uid} {
+   allow get: if signedIn() && (request.auth.uid == uid || admin());
+   allow list: if admin();
+   allow create: if (signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['email','displayName','country','role','status','trialApproved','createdAt']) && request.resource.data.email == request.auth.token.email && request.resource.data.role == 'client' && request.resource.data.status == 'trial' && request.resource.data.trialApproved == true && request.resource.data.country in ['MX','INT'] && request.resource.data.createdAt == request.time) || (admin() && uid != request.auth.uid && request.resource.data.role == 'client');
+   allow update: if (signedIn() && request.auth.uid == uid && resource.data.status == 'trial' && resource.data.trialApproved == true && !('trialStartedAt' in resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trialStartedAt']) && request.resource.data.trialStartedAt == request.time) || (admin() && uid != request.auth.uid && request.resource.data.role == 'client');
+   allow delete: if admin() && uid != request.auth.uid;
+  }
+  match /techCatalog/{id} {allow read: if admin() || activeLicense() || activeTrial();allow create,update,delete: if admin();}
+  match /techPaymentRequests/{id} {
+   allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+   allow create: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending' && request.resource.data.method in ['spei','paypal','revolut'] && request.resource.data.createdAt == request.time;
+   allow update,delete: if admin();
+  }
+  match /couriers/{uid} {
+   allow read: if signedIn() && (request.auth.uid == uid || admin());
+   allow create: if signedIn() && request.auth.uid == uid && request.resource.data.courierId == uid;
+   allow update: if (owner(resource.data) && sameCourier() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','phone','vehicle','vehicleModel','color','plates','profilePhotoUrl','updatedAt'])) || admin();
+   allow delete: if false;
+  }
+  match /clients/{id} {allow read: if owner(resource.data) || admin();allow create: if owner(request.resource.data);allow update: if (owner(resource.data) && sameCourier()) || admin();allow delete: if false;}
+  match /orders/{id} {
+   allow read: if owner(resource.data) || admin();allow create: if owner(request.resource.data);allow update: if admin();allow delete: if false;
+   match /history/{eventId} {
+    allow read: if admin() || (signedIn() && get(/databases/$(database)/documents/orders/$(id)).data.courierId == request.auth.uid);
+    allow create: if admin() || (signedIn() && request.resource.data.courierId == request.auth.uid);
+    allow update,delete: if false;
+   }
+  }
+  match /ratings/{id} {allow read: if owner(resource.data) || admin();allow write: if false;}
+  match /complaints/{id} {allow read: if owner(resource.data) || admin();allow update: if admin();allow create,delete: if false;}
+  match /licenses/{courierId} {allow read: if signedIn() && (request.auth.uid == courierId || admin());allow write: if admin();}
+  match /courierAccessRoutes/{token} {allow read,write: if admin();}
+  match /auditLogs/{id} {allow read,create: if admin();allow update,delete: if false;}
+  match /publicTracking/{token} {allow read: if true;allow write: if false;}
+  match /techPayments/{id} {
+   allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['uid','email','country','method','reference','amount','currency','planMonths','status','createdAt']) && request.resource.data.uid == request.auth.uid && request.resource.data.email == request.auth.token.email && request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time && request.resource.data.country in ['MX','INT'] && request.resource.data.planMonths in [6,12] && request.resource.data.method in ['spei','paypal','revolut','binance'] && ((request.resource.data.country == 'MX' && request.resource.data.currency == 'MXN' && ((request.resource.data.planMonths == 6 && request.resource.data.amount == '350') || (request.resource.data.planMonths == 12 && request.resource.data.amount == '650')) && request.resource.data.method in ['spei','revolut','binance']) || (request.resource.data.country == 'INT' && request.resource.data.currency == 'USD' && ((request.resource.data.planMonths == 6 && request.resource.data.amount == '25') || (request.resource.data.planMonths == 12 && request.resource.data.amount == '40')) && request.resource.data.method in ['paypal','revolut','binance']));
+   allow update,delete: if admin();
+  }
+  match /{document=**} {allow read,write: if false;}
+ }
+}
