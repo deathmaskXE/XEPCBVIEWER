@@ -1,0 +1,253 @@
+import {libraryFileUrl} from './library-url';
+import React,{useEffect,useMemo,useState} from 'react';
+import {initializeApp,getApps} from 'firebase/app';
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,User} from 'firebase/auth';
+import {getFirestore,doc,getDoc,collection,onSnapshot,setDoc,serverTimestamp,Timestamp,query,where,updateDoc} from 'firebase/firestore';
+
+import {IntegratedViewer} from './IntegratedViewer';
+import {AppErrorBoundary} from './components/bench/AppErrorBoundary';
+import {ShieldCheck,Layers,LogOut,FolderOpen,ExternalLink,Users,CalendarClock,Search,RefreshCw,Gamepad2,Gamepad,Smartphone,Cpu} from 'lucide-react';
+import './tech-portal.css';
+const config={apiKey:import.meta.env.VITE_FIREBASE_API_KEY,authDomain:import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,projectId:import.meta.env.VITE_FIREBASE_PROJECT_ID,storageBucket:import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,messagingSenderId:import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,appId:import.meta.env.VITE_FIREBASE_APP_ID};
+const ready=Boolean(config.apiKey&&config.projectId);
+const app=ready?(getApps()[0]||initializeApp(config)):null;
+const auth=app?getAuth(app):null;
+const db=app?getFirestore(app):null;
+const paymentWhatsApp='527471731852';
+const suggestedCountry=()=>{try{const region=new Intl.Locale(navigator.language).region;return region==='MX'?'MX':region?'INT':'MX';}catch{return 'MX';}};
+const LICENSE_PRICES={MX:{6:{amount:350,currency:'MXN'},12:{amount:650,currency:'MXN'}},INT:{6:{amount:25,currency:'USD'},12:{amount:40,currency:'USD'}}} as const;
+const TRIAL_MS=10*60*1000;
+const BINANCE_PAY_ID='1287379101';
+type Profile={role?:string;status?:string;expiresAt?:unknown;activeUntil?:unknown;trialStartedAt?:unknown;trialApproved?:boolean;trialApprovedAt?:unknown;email?:string;displayName?:string;phone?:string};
+type Item={id:string;title:string;category:string;url:string;description?:string;brand?:string;model?:string;kind?:string};
+type Payment={id:string;uid:string;email:string;country:string;method:'spei'|'paypal'|'revolut'|'binance';reference:string;amount:string;status:'pending'|'approved'|'rejected';planMonths?:number;currency?:string;proofPath?:string;createdAt?:unknown;reviewedAt?:unknown;reviewNote?:string};
+type Account={id:string;email?:string;displayName?:string;status?:string;role?:string;expiresAt?:unknown;trialStartedAt?:unknown;trialApproved?:boolean;trialApprovedAt?:unknown;phone?:string;planMonths?:number;activatedAt?:unknown;updatedAt?:unknown;};
+
+const PAYMENT_BANK_NAME='Revolut Bank, S.A., Institución de Banca Múltiple';
+const PAYMENT_BANK_ADDRESS='Calle Varsovia 36, Piso 6, Oficina 603-W, Colonia Juárez, Alcaldía Cuauhtémoc, C.P. 06600, Ciudad de México, México';
+function PaymentField({label,value}:{label:string;value:string}){return <div className="xe-pay-field"><span>{label}</span><strong>{value}</strong><button type="button" onClick={()=>navigator.clipboard.writeText(value).catch(()=>window.prompt('Copia el dato:',value))} aria-label={`Copiar ${label}`}>Copiar</button></div>}
+type PaymentMethod = 'spei'|'paypal'|'revolut'|'binance';
+function PaymentMethodPicker({country,value,onChange}:{country:string;value:PaymentMethod;onChange:(v:PaymentMethod)=>void}){
+ const methods:PaymentMethod[]=country==='MX'?['spei','revolut','binance']:['paypal','revolut','binance'];
+ return <fieldset className="xe-payment-picker"><legend>Selecciona tu medio de pago</legend><div className="xe-payment-icons">{methods.map(m=><button key={m} type="button" className={`xe-payment-icon xe-pay-${m} ${value===m?'is-selected':''}`} aria-pressed={value===m} onClick={()=>onChange(m)}><span className="xe-pay-symbol" aria-hidden="true">{m==='spei'?<span className="xe-spei-logo">SPEI</span>:m==='paypal'?<span className="xe-paypal-logo">P<span>P</span></span>:m==='revolut'?<span className="xe-revolut-logo">R</span>:<span className="xe-binance-logo">◆</span>}</span><strong>{m==='spei'?'SPEI':m==='paypal'?'PayPal':m==='revolut'?'Revolut':'Binance Pay'}</strong></button>)}</div></fieldset>;
+}
+function PaymentInstructions({country,method,price,months}:{country:string;method:'spei'|'paypal'|'revolut'|'binance';price:number;months:number}){
+ const national=country==='MX';
+ if(method==='binance')return <section className="xe-payment-details"><h3>Binance Pay · Pago sujeto a verificación</h3><p>Suscripción de {months} meses: {price} {national?'MXN':'USD'}. Comprueba el importe y la divisa que Binance te permita enviar; no envíes una cantidad distinta sin confirmación.</p><PaymentField label="Binance Pay ID" value={BINANCE_PAY_ID}/><p>En Binance entra a Pay → Enviar, utiliza el identificador y guarda el ID de la operación. El pago no activa automáticamente tu licencia.</p></section>;
+ if(method==='paypal')return <section className="xe-payment-details"><h3>PayPal · Pago internacional</h3><p>Suscripción de {months} meses: {price} USD. Comprueba la moneda y el importe antes de enviar.</p><a href="https://paypal.me/XboxElEscondite" target="_blank" rel="noopener noreferrer">Abrir PayPal de XE Servicio Electrónico ↗</a><p>Después de pagar, registra el ID de la transacción y envía tu comprobante.</p></section>;
+ if(method==='spei')return <section className="xe-payment-details"><h3>Transferencia SPEI · México</h3><p>Suscripción de {months} meses: {price} MXN. Puedes transferir a cualquiera de estas cuentas.</p><PaymentField label="Mercado Pago · CLABE" value="722969020089368829"/><PaymentField label="Banorte · CLABE" value="072580010893628522"/><PaymentField label="Banorte · Tarjeta" value="4189140010217767"/><PaymentField label="BanCoppel · Tarjeta" value="4169160630158435"/><p>Verifica el beneficiario que te muestre tu banco antes de confirmar.</p></section>;
+ return <section className="xe-payment-details"><h3>Revolut · {national?'Transferencia nacional':'Transferencia internacional'}</h3><p>Beneficiario: <strong>Irving Daniel Sanchez Nava</strong></p>{national?<PaymentField label="CLABE Revolut (MXN)" value="170180010760547520"/>:<><PaymentField label="Número de cuenta internacional" value="170002404039181725"/><PaymentField label="BIC / SWIFT" value="REVOMXM2"/><p>El precio del plan es {price} USD. Estos datos corresponden a una cuenta en MXN; verifica con Revolut las divisas admitidas, la conversión y las comisiones antes de transferir.</p></>}<p><strong>Banco:</strong> {PAYMENT_BANK_NAME}</p><p><strong>Dirección:</strong> {PAYMENT_BANK_ADDRESS}</p></section>;
+}
+function dateOf(v:unknown):Date|null {if(!v)return null;if(typeof v==='object'&&v!==null&&'toDate' in v&&typeof v.toDate==='function')return v.toDate();const d=new Date(v as string);return Number.isNaN(d.getTime())?null:d;}
+function addCalendarMonths(base:Date,months:number){const d=new Date(base);const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months);const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d;}
+function dateLabel(v:unknown){return dateOf(v)?.toLocaleDateString('es-MX')||'Sin vencimiento';}
+function errMessage(e:unknown){return e instanceof Error?e.message:'Error desconocido';}
+export function TechPortal(){
+ const [user,setUser]=useState<User|null>(null),[profile,setProfile]=useState<Profile|null>(null),[loading,setLoading]=useState(true),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[tab,setTab]=useState<'viewer'|'library'|'users'|'payments'>('library');
+ const [folderItems,setFolderItems]=useState<Item[]>([]),[brandFilter,setBrandFilter]=useState(''),[modelFilter,setModelFilter]=useState(''),[kindFilter,setKindFilter]=useState('BoardViews'),[accounts,setAccounts]=useState<Account[]>([]),[search,setSearch]=useState(''),[categoryFilter,setCategoryFilter]=useState('Consolas');
+ const [register,setRegister]=useState(false),[registerName,setRegisterName]=useState(''),[country,setCountry]=useState(suggestedCountry),[method,setMethod]=useState<'spei'|'paypal'|'revolut'|'binance'>(()=>suggestedCountry()==='MX'?'spei':'paypal'),[reference,setReference]=useState(''),[amount,setAmount]=useState(''),[proof,setProof]=useState<File|null>(null),[payments,setPayments]=useState<Payment[]>([]),[reviewNotes,setReviewNotes]=useState<Record<string,string>>({}),[notice,setNotice]=useState('');
+ const [now,setNow]=useState(Date.now());
+ const [accountSearch,setAccountSearch]=useState('');
+ const [editAccount,setEditAccount]=useState<Account|null>(null);
+ const [editName,setEditName]=useState(''),[editPhone,setEditPhone]=useState(''),[editEmail,setEditEmail]=useState('');
+ const [trialOrder,setTrialOrder]=useState<'finished'|'active'|'all'>('finished');
+ const [registerPhone,setRegisterPhone]=useState('');
+ const [planMonths,setPlanMonths]=useState<6|12>(12);
+ const [showPlans,setShowPlans]=useState(false);
+ const licensePrice=LICENSE_PRICES[country==='MX'?'MX':'INT'][planMonths];
+ useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return ()=>window.clearInterval(timer);},[]);
+ const [viewerInitialId,setViewerInitialId]=useState<string|null>(null);
+ const [accountUid,setAccountUid]=useState(''),[accountEmail,setAccountEmail]=useState(''),[days,setDays]=useState('12'),[busy,setBusy]=useState(false);
+ const [profileMissing,setProfileMissing]=useState(false);
+ const [profileFailure,setProfileFailure]=useState(false);
+ const [retryProfile,setRetryProfile]=useState(0);
+ // Mantener el acceso durante la confirmación de la marca de tiempo de Firestore.
+ const [pendingTrialStart,setPendingTrialStart]=useState<number|null>(null);
+ useEffect(()=>{
+  if(!auth||!db){setLoading(false);return;}
+  let unsubscribeProfile:(()=>void)|undefined;
+  let cancelled=false;
+  const unsubscribeAuth=onAuthStateChanged(auth,async u=>{
+   unsubscribeProfile?.();unsubscribeProfile=undefined;
+   setLoading(true);setUser(u);setPendingTrialStart(null);setProfile(null);setProfileMissing(false);setProfileFailure(false);setError('');
+   if(!u){setLoading(false);return;}
+   // La consulta del perfil técnico no debe depender de una consulta previa a /users:
+   // esa consulta podía fallar por conectividad y bloquear incluso las pruebas nuevas.
+   unsubscribeProfile=onSnapshot(doc(db!,'techUsers',u.uid),{includeMetadataChanges:true},snap=>{
+    if(cancelled)return;
+    if(snap.metadata.fromCache && !snap.exists()){
+     setProfileFailure(true);setProfileMissing(false);
+     setError('No se pudo verificar el perfil en el servidor. Comprueba tu conexión e inténtalo de nuevo.');
+    }else{
+     setProfile(snap.exists()?snap.data() as Profile:null);
+     setProfileMissing(!snap.exists());setProfileFailure(false);setError('');
+    }
+    setLoading(false);
+   },e=>{if(cancelled)return;setProfileFailure(true);setProfileMissing(false);setError('No se pudo comprobar tu perfil: '+errMessage(e));setLoading(false);});
+   // Compatibilidad con cuentas administradoras anteriores.
+   try{
+    const legacy=await getDoc(doc(db!,'users',u.uid));
+    const old=legacy.exists()?legacy.data() as Profile:null;
+    if(!cancelled && old?.role==='admin' && old.status==='approved'){
+     unsubscribeProfile?.();unsubscribeProfile=undefined;
+     setProfile(old);setProfileMissing(false);setProfileFailure(false);setError('');setLoading(false);
+    }
+   }catch{/* No bloquear la prueba por un error en el perfil de administrador heredado. */}
+  });
+  return ()=>{cancelled=true;unsubscribeAuth();unsubscribeProfile?.();};
+ },[retryProfile]);
+ const admin=profile?.role==='admin'&&(profile?.status==='approved'||profile?.status==='active');
+ const expires=dateOf(profile?.expiresAt??profile?.activeUntil);
+ const trialStart=dateOf(profile?.trialStartedAt) || (profile?.status==='trial' && pendingTrialStart!==null ? new Date(pendingTrialStart) : null);
+ const trialRemaining=trialStart?Math.max(0,Math.ceil((trialStart.getTime()+TRIAL_MS-now)/1000)):0;
+ const trialReady=profile?.status==='trial'&&!trialStart&&profile?.trialApproved===true;
+ const trialWaiting=profile?.status==='trial'&&!trialStart&&profile?.trialApproved!==true;
+ // Reparar automáticamente perfiles de prueba heredados que nunca iniciaron.
+ // Firestore valida que no exista trialStartedAt: nunca se reinicia una prueba consumida.
+ useEffect(()=>{
+  if(!db||!user||loading||profileFailure||!profile||profile.status!=='trial'||profile.trialApproved===true||dateOf(profile.trialStartedAt))return;
+  let cancelled=false;
+  const ref=doc(db,'techUsers',user.uid);
+  updateDoc(ref,{trialApproved:true}).catch(e=>{
+   if(!cancelled)setError('No se pudo habilitar tu prueba automáticamente: '+errMessage(e)+'. Comprueba que las reglas de Firestore estén actualizadas.');
+  });
+  return ()=>{cancelled=true;};
+ },[user?.uid,loading,profileFailure,profile?.status,profile?.trialApproved,profile?.trialStartedAt]);
+
+ const trialActive=profile?.status==='trial'&&trialRemaining>0;
+ const allowed=admin||trialReady||trialActive||(profile?.status==='active'&&!!expires&&expires.getTime()>now);
+ useEffect(()=>{if(!db||!user)return;const q=admin?collection(db,'techPayments'):query(collection(db,'techPayments'),where('uid','==',user.uid));return onSnapshot(q,s=>setPayments(s.docs.map(d=>({id:d.id,...d.data()} as Payment))),e=>setError('Solicitudes: '+e.message));},[user,admin]);
+ useEffect(()=>{if(!db||!user||!admin)return;return onSnapshot(collection(db,'techUsers'),s=>setAccounts(s.docs.map(d=>({id:d.id,...d.data()} as Account))),e=>setError('No se pudo consultar las licencias: '+e.message));},[user,admin]);
+ // La biblioteca local se publica mediante un índice generado en cada build.
+ // Solo se consulta tras validar el acceso a la aplicación.
+ useEffect(()=>{if(!allowed){setFolderItems([]);return;}const controller=new AbortController();fetch(`${import.meta.env.BASE_URL}biblioteca/index.json`,{signal:controller.signal,cache:'no-store'}).then(r=>{if(!r.ok)throw Error(`HTTP ${r.status}`);return r.json();}).then(data=>{if(!Array.isArray(data))throw Error('Índice de biblioteca inválido');setFolderItems(data.filter(x=>x&&typeof x.id==='string'&&typeof x.url==='string'&&typeof x.category==='string').map(x=>({...x,kind: /^(esquem[aá]ticos|schematics|diagramas)$/i.test(String(x.kind||'')) ? 'Esquemáticos' : x.kind,url:libraryFileUrl(x.url)})) as Item[]);}).catch(e=>{if(!controller.signal.aborted)setError('Índice de biblioteca: '+errMessage(e));});return ()=>controller.abort();},[allowed]);
+ const items=folderItems;
+ useEffect(()=>{if(!items.length)return;const first=items.find(x=>x.category==='Consolas'&&x.kind==='BoardViews')||items.find(x=>x.category==='Controles'&&x.kind==='BoardViews');if(first){setCategoryFilter(first.category);setBrandFilter(first.brand||'');setModelFilter(first.model||'');setKindFilter('BoardViews');}},[folderItems]);
+ const availableBrands=useMemo(()=>Array.from(new Set(items.filter(x=>x.category===categoryFilter).map(x=>x.brand).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'es')),[items,categoryFilter]);
+ const availableModels=useMemo(()=>Array.from(new Set(items.filter(x=>x.category===categoryFilter&&x.brand===brandFilter).map(x=>x.model).filter(Boolean))) as string[],[items,categoryFilter,brandFilter]);
+ const availableKinds=useMemo(()=>Array.from(new Set(items.filter(x=>x.category===categoryFilter&&(!brandFilter||x.brand===brandFilter)&&(!modelFilter||x.model===modelFilter)).map(x=>x.kind).filter(Boolean))) as string[],[items,categoryFilter,brandFilter,modelFilter]);
+ const accountMatches=(a:Account)=>`${a.email||''} ${a.displayName||''} ${a.phone||''} ${a.id}`.toLocaleLowerCase().includes(accountSearch.trim().toLocaleLowerCase());
+ const trialState=(a:Account)=>{const start=dateOf(a.trialStartedAt);return a.status==='trial'?(start?(start.getTime()+TRIAL_MS>Date.now()?'active':'finished'):(a.trialApproved?'ready':'pending')):(a.status==='active'?'license':'other');};
+ const visibleAccounts=accounts.filter(a=>a.role!=='admin'&&accountMatches(a));
+ const orderedTrials=[...visibleAccounts].filter(a=>trialOrder==='all'||(trialOrder==='finished'?trialState(a)==='finished':trialState(a)==='active')).sort((a,b)=>{const rank=(v:Account)=>trialState(v)==='finished'?0:trialState(v)==='active'?1:trialState(v)==='ready'?2:3;return rank(a)-rank(b)||(dateOf(b.trialStartedAt)?.getTime()||0)-(dateOf(a.trialStartedAt)?.getTime()||0);});
+ const filtered=useMemo(()=>items.filter(x=>(x.category===categoryFilter)&&(!brandFilter||x.brand===brandFilter)&&(!modelFilter||x.model===modelFilter)&&(kindFilter==='BoardViews'?x.kind==='BoardViews':!kindFilter||x.kind===kindFilter)&&`${x.title} ${x.category} ${x.brand||''} ${x.model||''} ${x.description||''}`.toLowerCase().includes(search.toLowerCase())),[items,search,categoryFilter,brandFilter,modelFilter,kindFilter]);
+ async function login(e:React.FormEvent){e.preventDefault();setError('');try{await signInWithEmailAndPassword(auth!,email,password);}catch{setError('No se pudo iniciar sesión. Comprueba tus credenciales.');}}
+ // El marcador local solo permite reintentar un alta iniciada en ESTE navegador.
+ // Nunca reactivamos automáticamente cuentas antiguas sin historial verificable.
+ const registrationKey=(uid:string)=>`xepcb-registration-pending:${uid}`;
+ async function finishRegistration(u:User, fallback?:{name:string;phone:string;country:string}){
+  if(!db)throw Error('Firestore no está configurado');
+  const key=registrationKey(u.uid);
+  const saved=window.sessionStorage.getItem(key);
+  if(!saved)throw Error('No hay un registro nuevo pendiente en este navegador. Solicita revisión al administrador.');
+  const data=fallback||JSON.parse(saved) as {name:string;phone:string;country:string};
+  const ref=doc(db,'techUsers',u.uid);
+  const existing=await getDoc(ref);
+  if(existing.exists()){
+   // No alterar licencias pagadas ni pruebas usadas.
+   window.sessionStorage.removeItem(key);
+   return;
+  }
+  await setDoc(ref,{
+   email:u.email||'',displayName:data.name,
+   ...(data.phone?{phone:data.phone}:{}),country:data.country,
+   role:'client',status:'trial',trialApproved:true,createdAt:serverTimestamp()
+  });
+  // Confirmar la escritura contra Firestore antes de anunciar éxito.
+  const confirmed=await getDoc(ref);
+  if(!confirmed.exists())throw Error('El servidor todavía no confirmó el perfil. Reintenta.');
+  window.sessionStorage.removeItem(key);
+ }
+ async function signup(e:React.FormEvent){
+  e.preventDefault();if(!auth||!db)return;
+  setBusy(true);setError('');
+  try{
+   const result=await createUserWithEmailAndPassword(auth,email,password);
+   const data={name:registerName.trim(),phone:registerPhone.trim(),country};
+   window.sessionStorage.setItem(registrationKey(result.user.uid),JSON.stringify(data));
+   await finishRegistration(result.user,data);
+   setNotice('Registro confirmado. Tu prueba de 10 minutos comenzará al abrir el visor.');
+  }catch(e){
+   setError('El registro no terminó correctamente: '+errMessage(e)+'. Si ya existe tu cuenta, inicia sesión y usa REINTENTAR REGISTRO. No vuelvas a crear otra cuenta.');
+  }finally{setBusy(false);}
+ }
+ async function recoverMissingProfile(){
+  if(!user||!db||!profileMissing)return;
+  setBusy(true);setError('');
+  try{
+   await finishRegistration(user);
+   setNotice('Perfil confirmado. Tu prueba comenzará al abrir el visor.');
+   setRetryProfile(n=>n+1);
+  }catch(e){setError('No fue posible recuperar el perfil: '+errMessage(e));}
+  finally{setBusy(false);}
+ }
+ async function openViewer(fileId?:string){
+  if(!db||!user)return;
+  if(trialWaiting){setError('Perfil técnico sin confirmar de autorización del administrador. No necesitas pagar ni registrarte nuevamente.');return;}
+  if(trialReady){
+   setBusy(true);setError('');
+   try{
+    const ref=doc(db,'techUsers',user.uid);
+    const current=await getDoc(ref);
+    if(!current.exists())throw Error('No se encontró el perfil de prueba.');
+    const data=current.data() as Profile;
+    if(data.status!=='trial'||data.trialApproved!==true||data.trialStartedAt)throw Error('El estado de la prueba cambió. Actualiza la página.');
+    await updateDoc(ref,{trialStartedAt:serverTimestamp()});
+    // El snapshot puede llegar con serverTimestamp temporalmente null.
+    // Conservar el estado de prueba iniciada y mostrar el visor sin parpadeos.
+    setPendingTrialStart(Date.now());
+   }catch(e){setError('No se pudo iniciar la prueba. Reintenta: '+errMessage(e));return;}
+   finally{setBusy(false);}
+  }
+  if(fileId)setViewerInitialId(fileId);
+  setTab('viewer');
+ }
+ async function approveTrial(uid:string){
+  if(!db||!user||!admin||uid===user.uid)return;
+  if(!window.confirm('¿Autorizar los 10 minutos gratuitos para esta cuenta registrada? El tiempo comenzará al abrir el visor.'))return;
+  setBusy(true);setError('');
+  try{
+   const ref=doc(db,'techUsers',uid);
+   const snap=await getDoc(ref);
+   if(!snap.exists())throw Error('No existe perfil en techUsers. Revisa la cuenta en Authentication.');
+   const d=snap.data() as Profile;
+   if(d.status!=='trial'||d.trialStartedAt)throw Error('La cuenta ya usó la prueba o tiene otro estado.');
+   await updateDoc(ref,{trialApproved:true,trialApprovedAt:serverTimestamp(),trialApprovedBy:user.uid});
+   setNotice('Prueba autorizada. El usuario podrá iniciarla al abrir el visor.');
+  }catch(e){setError('No se pudo autorizar la prueba: '+errMessage(e));}finally{setBusy(false);}
+ }
+ async function submitPayment(e:React.FormEvent){
+  e.preventDefault();if(!user||!db)return;
+  if(country==='MX'&&method!=='spei'&&method!=='revolut'&&method!=='binance'){setError('Selecciona SPEI, Revolut o Binance Pay.');return;}
+  if(country!=='MX'&&method==='spei'){setError('Selecciona PayPal, Revolut o Binance Pay.');return;}
+  if(!reference.trim()){setError('Falta referencia de pago.');return;}
+  // Abrir la pestaña durante el gesto del usuario evita bloqueos de ventanas emergentes.
+  const whatsappTab=window.open('about:blank','_blank');
+  setBusy(true);setError('');
+  try{
+   const paymentRef=doc(collection(db,'techPayments'));
+   await setDoc(paymentRef,{uid:user.uid,email:user.email||'',country,method,reference:reference.trim(),amount:String(licensePrice.amount),currency:licensePrice.currency,planMonths,status:'pending',createdAt:serverTimestamp()});
+   const message=`XEPCB VIEWER - COMPROBANTE DE PAGO\n\nSolicitud: ${paymentRef.id}\nUsuario: ${user.email||''}\nPaís: ${country==='MX'?'México':'Internacional'}\nMétodo: ${method.toUpperCase()}\nSuscripción: ${planMonths} meses\nImporte de licencia: ${licensePrice.amount} ${licensePrice.currency}\nReferencia de pago: ${reference.trim()}\n\nAdjunto mi comprobante para solicitar la activación de mi suscripción de ${planMonths} meses.\n\nAVISO: Este WhatsApp es EXCLUSIVAMENTE para recibir comprobantes. NO SE BRINDA ATENCIÓN AL CLIENTE NI SOPORTE TÉCNICO POR ESTE MEDIO. La licencia solo se activa tras verificar el pago y aprobarlo el administrador.`;
+   const target=`https://wa.me/${paymentWhatsApp}?text=${encodeURIComponent(message)}`;
+   if(whatsappTab){whatsappTab.location.href=target;}else{window.location.href=target;}
+   setNotice('Solicitud registrada. Adjunta tu comprobante manualmente en WhatsApp y envíalo. Abrir WhatsApp NO confirma que el mensaje se haya enviado ni que el pago esté verificado.');
+  }catch(e){whatsappTab?.close();setError('No se pudo registrar la solicitud: '+errMessage(e));}
+  finally{setBusy(false);}
+ }
+ async function review(payment:Payment,decision:'approved'|'rejected'){if(!db||!admin||!user)return;if(payment.status!=='pending')return;if(!window.confirm(decision==='approved'?'¿Confirmas el ingreso real y deseas activar el plan solicitado?':'¿Rechazar esta solicitud?'))return;setBusy(true);setError('');try{const paymentRef=doc(db,'techPayments',payment.id);if(decision==='approved'){const accountRef=doc(db,'techUsers',payment.uid);const current=await getDoc(accountRef);const base=dateOf(current.data()?.expiresAt);const start=base&&base.getTime()>Date.now()?base:new Date();const months=payment.planMonths===6?6:12;const end=addCalendarMonths(start,months);await setDoc(accountRef,{email:payment.email,role:'client',status:'active',planMonths:months,activatedAt:serverTimestamp(),expiresAt:Timestamp.fromDate(end),updatedAt:serverTimestamp()},{merge:true});}await updateDoc(paymentRef,{status:decision,reviewNote:reviewNotes[payment.id]||'',reviewedAt:serverTimestamp(),reviewedBy:user.uid});setNotice(decision==='approved'?'Suscripción activada según el plan aprobado.':'Solicitud rechazada.');}catch(e){setError('Revisión: '+errMessage(e));}finally{setBusy(false);}}
+ async function license(e:React.FormEvent){e.preventDefault();if(!db||!admin)return;const uid=accountUid.trim();const months=Number(days);if(!uid||![6,12].includes(months)){setError('Selecciona una membresía de 6 o 12 meses y un UID válido.');return;}setBusy(true);setError('');try{const ref=doc(db,'techUsers',uid);const existing=await getDoc(ref);if(uid===user?.uid)throw Error('El administrador no requiere licencia');const base=existing.exists()?dateOf(existing.data().expiresAt):null;const start=base&&base.getTime()>Date.now()?base:new Date();const end=addCalendarMonths(start,months);await setDoc(ref,{email:accountEmail.trim()||existing.data()?.email||'',role:'client',status:'active',planMonths:months,activatedAt:serverTimestamp(),expiresAt:Timestamp.fromDate(end),updatedAt:serverTimestamp()}, {merge:true});setAccountUid('');setAccountEmail('');}catch(e){setError('No se pudo activar la licencia: '+errMessage(e));}finally{setBusy(false);}}
+ function selectAccountEdit(a:Account){setEditAccount(a);setEditName(a.displayName||'');setEditPhone(a.phone||'');setEditEmail(a.email||'');setError('');}
+ async function saveAccountEdit(e:React.FormEvent){
+  e.preventDefault();if(!db||!admin||!editAccount||!user)return;
+  const name=editName.trim(),phone=editPhone.trim(),emailValue=editEmail.trim().toLowerCase();
+  if(!emailValue||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)){setError('Indica un correo válido para el perfil.');return;}
+  if(editAccount.email&&editAccount.email.toLowerCase()!==emailValue){setError('No se puede cambiar el correo de inicio de sesión desde este formulario: requiere actualizar Firebase Authentication mediante un backend administrativo.');return;}
+  if(!window.confirm('¿Guardar los datos del perfil? Esto NO modifica Firebase Authentication ni la duración de la licencia.'))return;
+  setBusy(true);setError('');
+  try{await updateDoc(doc(db,'techUsers',editAccount.id),{displayName:name,phone,email:emailValue,updatedAt:serverTimestamp(),updatedBy:user.uid});setNotice('Perfil actualizado en Firestore. Verifica que el correo coincida con Authentication.');setEditAccount(null);}
+  catch(e){setError('No se pudo guardar el perfil: '+errMessage(e));}finally{setBusy(false);}
+ }
+ async function suspend(uid:string){if(!db||!admin||uid===user?.uid||!window.confirm('¿Suspender el acceso de este usuario?'))return;try{await setDoc(doc(db,'techUsers',uid),{status:'suspended',updatedAt:serverTimestamp()},{merge:true});}catch(e){setError(errMessage(e));}}
+ return <div className="tech-root"><header className="tech-bar"><div className="tech-brand"><Layers size={25}/><span>XE<b>PCB VIEWER</b></span><small>PROFESSIONAL ELECTRONICS DATABASE</small></div>{user&&<nav className="tech-nav">{allowed&&<><button onClick={()=>setTab('library')} className={tab==='library'?'selected':''}>Biblioteca</button><button onClick={()=>void openViewer()} className={tab==='viewer'?'selected':''}>Visor integrado</button>{!admin&&profile?.status==='trial'&&<button type="button" onClick={()=>setShowPlans(true)}>♛ Suscripciones</button>}{admin&&<><button onClick={()=>setTab('users')} className={tab==='users'?'selected':''}><Users size={15}/> Licencias</button><button onClick={()=>setTab('trials')} className={tab==='trials'?'selected':''}><ShieldCheck size={15}/> Pruebas gratuitas ({accounts.filter(a=>a.status==='trial'&&!dateOf(a.trialStartedAt)&&a.trialApproved!==true).length})</button><button onClick={()=>setTab('payments')} className={tab==='payments'?'selected':''}>Pagos ({payments.filter(p=>p.status==='pending').length})</button></>}</>}<button onClick={()=>signOut(auth!)}><LogOut size={15}/> Salir</button></nav>}</header>
+{showPlans&&allowed&&!admin&&<div className="xe-plans-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShowPlans(false)}}><section className="xe-plans-dialog" role="dialog" aria-modal="true" aria-label="Suscripciones XEPCB"><button type="button" className="xe-plans-close" onClick={()=>setShowPlans(false)} aria-label="Cerrar suscripciones">×</button><h2>♛ XEPCB PREMIUM</h2><p>Contrata antes de finalizar tu prueba. El acceso se activará después de comprobar tu pago.</p><div className="xe-plan-cards"><button type="button" className={planMonths===6?'selected':''} onClick={()=>setPlanMonths(6)}><strong>6 MESES</strong><b>{country==='MX'?'$350 MXN':'$25 USD'}</b></button><button type="button" className={planMonths===12?'selected':''} onClick={()=>setPlanMonths(12)}><strong>12 MESES</strong><b>{country==='MX'?'$650 MXN':'$40 USD'}</b></button></div><form className="tech-payment-form" onSubmit={submitPayment}><label>País<select value={country} onChange={e=>{setCountry(e.target.value);setMethod(e.target.value==='MX'?'spei':'paypal');}}><option value="MX">México</option><option value="INT">Fuera de México</option></select></label><PaymentMethodPicker country={country} value={method} onChange={setMethod}/><label>Plan de suscripción<select value={planMonths} onChange={e=>setPlanMonths(Number(e.target.value) as 6|12)}><option value={6}>6 meses</option><option value={12}>12 meses</option></select></label><PaymentInstructions country={country} method={method} price={licensePrice.amount} months={planMonths}/><p className="xe-license-price">Suscripción seleccionada: <strong>{licensePrice.amount.toLocaleString('es-MX')} {licensePrice.currency}</strong></p><label>Referencia bancaria / ID de transacción<input required value={reference} onChange={e=>setReference(e.target.value)}/></label><p>AVISO IMPORTANTE: Este WhatsApp se utiliza exclusivamente para recibir comprobantes de pago. NO SE BRINDA ATENCIÓN AL CLIENTE NI SOPORTE TÉCNICO POR ESTE MEDIO. Al continuar se abrirá WhatsApp: adjunta manualmente tu comprobante (JPG, PNG o PDF) y envíalo. Abrir WhatsApp no confirma el envío ni activa la licencia.</p><button className="tech-primary" disabled={busy}>REGISTRAR SOLICITUD Y ABRIR WHATSAPP</button></form>{error&&<p role="alert" className="tech-error">{error}</p>}</section></div>} {!ready?<main className="tech-center"><div className="tech-panel"><h2>Configura Firebase</h2><p>Faltan las variables VITE_FIREBASE_* en la compilación.</p></div></main>:loading?<main className="tech-center">Verificando acceso…</main>:!user?<main className="tech-center"><form className="tech-panel" onSubmit={register?signup:login}><ShieldCheck size={34}/><h1>{register?'CREAR CUENTA':'ACCESO PRIVADO'}</h1><p>{register?'Regístrate y solicita tu licencia anual.':'Inicia sesión para consultar la biblioteca técnica.'}</p>{register&&<><label>Nombre<input required value={registerName} onChange={e=>setRegisterName(e.target.value)}/></label><label>Celular (opcional)<input type="tel" value={registerPhone} onChange={e=>setRegisterPhone(e.target.value)} placeholder="Número con lada"/></label><label>País<select value={country} onChange={e=>{setCountry(e.target.value);setMethod(e.target.value==='MX'?'spei':'paypal');}}><option value="MX">México</option><option value="INT">Fuera de México</option></select></label></>}<label>Correo<input type="email" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Contraseña<input type="password" required value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={busy} className="tech-primary">{register?'REGISTRARME':'INICIAR SESIÓN'}</button><button type="button" className="tech-link" onClick={()=>{setRegister(!register);setError('');}}>{register?'Ya tengo cuenta':'Crear una cuenta nueva'}</button>{error&&<p className="tech-error">{error}</p>}</form></main>:!allowed&&(profileMissing||profileFailure)?<main className="tech-center"><div className="tech-panel"><h2>{profileFailure?"Error al verificar el acceso":"Perfil técnico sin confirmar"}</h2><p>{profileFailure?"No fue posible consultar tu perfil. No se ha determinado que tu prueba haya vencido.":"Tu cuenta existe, pero falta crear su perfil de prueba. No necesitas pagar para activar tus primeros 10 minutos."}</p>{profileMissing&&<p>Tu cuenta existe en Authentication, pero falta su perfil. Si acabas de registrarte en este navegador, pulsa REINTENTAR REGISTRO. Para cuentas anteriores, contacta al administrador; no se concede una segunda prueba automáticamente.</p>}{profileMissing&&window.sessionStorage.getItem(registrationKey(user.uid))&&<button type="button" className="tech-primary" disabled={busy} onClick={()=>void recoverMissingProfile()}>REINTENTAR REGISTRO</button>}{profileFailure&&<button type="button" className="tech-primary tech-trial-activate" disabled={busy} onClick={()=>setRetryProfile(n=>n+1)}>REINTENTAR CONEXIÓN</button>}{error&&<p className="tech-error">{error}</p>}</div></main>:trialWaiting?<main className="tech-center"><div className="tech-panel"><h2>Prueba pendiente de autorización</h2><p>Si tus 10 minutos no se activaron automáticamente, espera a que el administrador autorice tu acceso. No necesitas crear otra cuenta ni pagar.</p><button type="button" className="tech-primary" onClick={()=>setRetryProfile(n=>n+1)}>COMPROBAR AUTORIZACIÓN</button></div></main>:!allowed?<main className="tech-center"><div className="tech-panel"><h2>Solicitar licencia anual</h2><p>{profile?.status==='trial'?'Tu prueba gratuita terminó.':'Tu cuenta está pendiente o vencida.'} Solicita tu licencia anual; el administrador verificará tu pago.</p><div className="xe-expired-hero"><span className="xe-premium-crown" aria-hidden="true">♛</span><h2>XEPCB PREMIUM</h2><p>Tu prueba gratuita ha finalizado. Continúa utilizando la biblioteca técnica con una suscripción.</p></div><div className="xe-plan-cards"><button type="button" className={planMonths===6?'selected':''} onClick={()=>setPlanMonths(6)}><strong>6 MESES</strong><b>{country==='MX'?'$350 MXN':'$25 USD'}</b></button><button type="button" className={planMonths===12?'selected':''} onClick={()=>setPlanMonths(12)}><strong>12 MESES</strong><b>{country==='MX'?'$650 MXN':'$40 USD'}</b></button></div><form className="tech-payment-form" onSubmit={submitPayment}><label>País<select value={country} onChange={e=>{setCountry(e.target.value);setMethod(e.target.value==='MX'?'spei':'paypal');}}><option value="MX">México</option><option value="INT">Fuera de México</option></select></label><PaymentMethodPicker country={country} value={method} onChange={setMethod}/><label>Plan de suscripción<select value={planMonths} onChange={e=>setPlanMonths(Number(e.target.value) as 6|12)}><option value={6}>6 meses</option><option value={12}>12 meses</option></select></label><PaymentInstructions country={country} method={method} price={licensePrice.amount} months={planMonths}/><p className="xe-license-price">Suscripción seleccionada: <strong>{licensePrice.amount.toLocaleString('es-MX')} {licensePrice.currency}</strong></p><label>Referencia bancaria / ID de transacción<input required value={reference} onChange={e=>setReference(e.target.value)}/></label><p>AVISO IMPORTANTE: Este WhatsApp se utiliza exclusivamente para recibir comprobantes de pago. NO SE BRINDA ATENCIÓN AL CLIENTE NI SOPORTE TÉCNICO POR ESTE MEDIO. Al continuar se abrirá WhatsApp: adjunta manualmente tu comprobante (JPG, PNG o PDF) y envíalo. Abrir WhatsApp no confirma el envío ni activa la licencia.</p><button className="tech-primary" disabled={busy}>REGISTRAR SOLICITUD Y ABRIR WHATSAPP</button></form><h3>Mis solicitudes</h3>{payments.map(p=><div className="tech-payment" key={p.id}><span>{p.method.toUpperCase()} · {p.reference} · {p.status==='pending'?'Pendiente':p.status==='approved'?'Aprobada':'Rechazada'}</span>{p.reviewNote&&<small>{p.reviewNote}</small>}</div>)}{error&&<p className="tech-error">{error}</p>}</div></main>:<main className={tab==='viewer'?'tech-viewer':''}>{tab==='viewer'?<><div className="tech-trial-timer">{trialActive&&!admin?`PRUEBA GRATUITA · ${String(Math.floor(trialRemaining/60)).padStart(2,'0')}:${String(trialRemaining%60).padStart(2,'0')}`:''}</div><AppErrorBoundary><IntegratedViewer items={items} initialId={viewerInitialId}/></AppErrorBoundary></>:tab==='library'?<section className="tech-content"><div className="tech-hero"><div className="tech-hero-eyebrow">LABORATORIO DIGITAL · ELECTRÓNICA PROFESIONAL</div><h1 className="tech-metal-title">XEPCB <span>VIEWER</span></h1><p>BOARDVIEWS · DIAGRAMAS · SCHEMATICS · OVERLAYS</p></div><div className="tech-search-wrap"><Search size={18}/><input className="tech-search" placeholder="Buscar marca, modelo, categoría o archivo…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="tech-category-grid">{["Consolas","Controles","Celulares","Gráficas RTX y AMD"].map(c=><button key={c} className={categoryFilter===c?"active":""} onClick={()=>{setCategoryFilter(c);setBrandFilter('');setModelFilter('');setKindFilter('BoardViews');}}>{c==='Consolas'?<Gamepad2 size={23}/>:c==='Controles'?<Gamepad size={23}/>:c==='Celulares'?<Smartphone size={23}/>:<Cpu size={23}/>}<span>{c}</span></button>)}</div><div className="tech-folder-filters"><strong>Modelos con archivos</strong><div className="tech-filter-buttons">{availableBrands.map(brand=><button key={brand} className={brandFilter===brand?'active':''} onClick={()=>{setBrandFilter(brandFilter===brand?'':brand);setModelFilter('');setKindFilter('BoardViews');}}>{brand.replace(/-/g,' ').toUpperCase()}</button>)}</div>{brandFilter&&categoryFilter==='Celulares'&&<><strong>Modelos con archivos</strong><div className="tech-filter-buttons">{availableModels.map(model=><button key={model} className={modelFilter===model?'active':''} onClick={()=>{setModelFilter(modelFilter===model?'':model);setKindFilter('BoardViews');}}>{model.replace(/-/g,' ').toUpperCase()}</button>)}</div></>}{<><strong>Tipo de archivo</strong><div className="tech-filter-buttons tech-file-kind-buttons">{['BoardViews','Overlays','Esquemáticos'].map(kind=><button key={kind} className={kindFilter===kind?'active':''} onClick={()=>setKindFilter(kind)}>{kind}</button>)}</div></>}{availableBrands.length===0&&<p>Esta categoría se mostrará cuando agregues archivos.</p>}</div>{trialActive&&!admin&&tab==='viewer'&&<div className="tech-trial-timer" role="timer">PRUEBA GRATUITA · {String(Math.floor(trialRemaining/60)).padStart(2,'0')}:{String(trialRemaining%60).padStart(2,'0')} restantes</div>}<div className="tech-library-actions"><strong>Biblioteca técnica</strong><button className="tech-primary" onClick={()=>void openViewer()} disabled={busy}><FolderOpen size={17}/> Abrir visor integrado</button></div><div className="tech-grid">{filtered.map(x=><article className="tech-tile" key={x.id}><span>{x.category}</span><h3>{x.title}</h3><p>{[x.brand,x.model].filter(Boolean).join(' · ')}</p><p>{x.description}</p><button type="button" onClick={()=>void openViewer(x.id)}><ExternalLink size={15}/> Abrir en visor</button></article>)}</div>{filtered.length===0&&<p>No hay archivos coincidentes en esta categoría.</p>}</section> :tab==='trials'?<section className="tech-content"><div className="tech-heading"><div><h1>Administrar pruebas gratuitas</h1><p>Usuarios registrados en techUsers. Autoriza los 10 minutos pendientes; el contador comienza cuando el cliente abre el visor o un archivo.</p></div></div><div className="tech-note">Si una cuenta existe en Firebase Authentication pero no aparece aquí, falta su perfil de Firestore. Por seguridad no se puede confirmar su registro únicamente desde esta página. Comprueba su UID en Firebase Authentication y repara el perfil desde un entorno administrativo seguro.</div><div className="tech-trial-summary"><span>Registrados: <b>{accounts.length}</b></span><span>Pendientes: <b>{accounts.filter(a=>a.status==='trial'&&!dateOf(a.trialStartedAt)&&a.trialApproved!==true).length}</b></span><span>Disponibles: <b>{accounts.filter(a=>a.status==='trial'&&!dateOf(a.trialStartedAt)&&a.trialApproved===true).length}</b></span><span>Iniciadas: <b>{accounts.filter(a=>a.status==='trial'&&!!dateOf(a.trialStartedAt)).length}</b></span></div><div className="xe-admin-filters"><input aria-label="Buscar cuentas" placeholder="Buscar por correo, nombre, celular o UID" value={accountSearch} onChange={e=>setAccountSearch(e.target.value)}/><select aria-label="Orden de pruebas" value={trialOrder} onChange={e=>setTrialOrder(e.target.value as 'finished'|'active'|'all')}><option value="finished">Pruebas finalizadas</option><option value="active">Pruebas activas</option><option value="all">Todas las cuentas</option></select></div><div className="tech-users">{orderedTrials.map(a=>{const started=dateOf(a.trialStartedAt);const state=a.status==='trial'?(started?(started.getTime()+TRIAL_MS>Date.now()?'En curso':'Finalizada'):(a.trialApproved===true?'Disponible':'Pendiente')):(a.status==='active'?'Licencia activa':a.status==='suspended'?'Suspendida':'Otro estado');return <article className="tech-tile" key={a.id}><span>{state}</span><h3>{a.displayName||a.email||'Usuario sin nombre'}</h3><p>{a.email||'Sin correo en el perfil'}</p>{a.phone&&<p>Celular: {a.phone}</p>}<button type="button" onClick={()=>{setAccountUid(a.id);setAccountEmail(a.email||'');setTab('users');}}>Seleccionar para activar licencia</button><p>UID: <code>{a.id}</code></p>{a.status==='trial'&&!started&&a.trialApproved!==true&&<button type="button" className="tech-primary" disabled={busy} onClick={()=>void approveTrial(a.id)}>AUTORIZAR 10 MINUTOS</button>}{a.status==='trial'&&!started&&a.trialApproved===true&&<p>La prueba ya está autorizada. Iniciará cuando el usuario abra el visor.</p>}{started&&<p>Inicio: {dateLabel(a.trialStartedAt)}</p>}</article>})}</div>{accounts.length===0&&<p>No hay perfiles disponibles o la consulta de Firestore no tiene permisos. Comprueba las reglas y la cuenta administradora.</p>}</section>:tab==='payments'?<section className="tech-content"><div className="tech-heading"><div><h1>Solicitudes de pago</h1><p>Comprueba el ingreso en tu banco o PayPal antes de aprobar. Los comprobantes no prueban por sí solos que se recibió dinero.</p></div></div><div className="tech-users">{payments.map(p=><article className="tech-tile" key={p.id}><span>{p.status.toUpperCase()}</span><h3>{p.email}</h3><p>{p.country==='MX'?'México':'Internacional'} · {p.method.toUpperCase()} · {p.planMonths||12} meses · {p.amount} {p.country==='MX'?'MXN':'USD'}</p><p>Referencia: {p.reference}</p><p>UID: {p.uid}</p><p>Comprobante: revisar manualmente en WhatsApp con el ID de solicitud. Verifica el ingreso real antes de aprobar.</p>{p.status==='pending'&&<><label>Nota de revisión<input value={reviewNotes[p.id]||''} onChange={e=>setReviewNotes({...reviewNotes,[p.id]:e.target.value})} placeholder="Motivo del rechazo (opcional)"/></label><div className="tech-payment-actions"><button disabled={busy} onClick={()=>review(p,'approved')}>Aprobar plan</button><button disabled={busy} onClick={()=>review(p,'rejected')}>Rechazar</button></div></>}{p.reviewNote&&<p>Nota: {p.reviewNote}</p>}</article>)}</div>{payments.length===0&&<p>No hay solicitudes registradas.</p>}</section>:<section className="tech-content"><div className="tech-heading"><div><h1>Usuarios y licencias</h1><p>Gestiona únicamente cuentas con licencia pagada o activada manualmente. Tu cuenta de administrador no caduca.</p></div></div><div className="tech-note">Primero crea al cliente en Firebase Authentication → Usuarios → Agregar usuario. Copia su UID y pégalo aquí. No compartas contraseñas por mensajes.</div><form className="tech-admin-form" onSubmit={license}><label>UID de Firebase Authentication<input required value={accountUid} onChange={e=>setAccountUid(e.target.value)} placeholder="UID exacto"/></label><label>Correo (opcional)<input type="email" value={accountEmail} onChange={e=>setAccountEmail(e.target.value)}/></label><label>Duración<select value={days} onChange={e=>setDays(e.target.value)}><option value="6">6 meses calendario</option><option value="12">12 meses calendario</option></select></label><button disabled={busy} className="tech-primary"><CalendarClock size={16}/> Activar o renovar</button></form><div className="xe-admin-filters"><input aria-label="Buscar usuarios" placeholder="Buscar por correo, nombre, celular o UID" value={accountSearch} onChange={e=>setAccountSearch(e.target.value)}/></div>{editAccount&&<form className="tech-admin-form" onSubmit={saveAccountEdit}><h3>Editar perfil: {editAccount.displayName||editAccount.email||editAccount.id}</h3><p>UID: <code>{editAccount.id}</code></p><label>Nombre completo<input value={editName} onChange={e=>setEditName(e.target.value)}/></label><label>Celular<input type="tel" value={editPhone} onChange={e=>setEditPhone(e.target.value)}/></label><label>Correo registrado en Authentication<input type="email" required value={editEmail} onChange={e=>setEditEmail(e.target.value)}/></label><p className="tech-note">Este correo identifica el perfil de Firestore. No modifica el correo de acceso en Firebase Authentication. Antes de completar un correo ausente, comprueba que corresponda al mismo UID en Authentication.</p><p>Plan: {editAccount.planMonths===6?'6 meses':editAccount.planMonths===12?'12 meses':'No registrado'} · Vence: {dateLabel(editAccount.expiresAt)}. Editar el perfil no altera el vencimiento.</p><button type="submit" className="tech-primary" disabled={busy}>Guardar datos</button><button type="button" onClick={()=>setEditAccount(null)}>Cancelar</button></form>}<div className="tech-users">{accounts.filter(a=>a.status==='active'&&a.role!=='admin'&&accountMatches(a)).map(a=><div className="tech-user" key={a.id}><div><strong>{a.displayName||a.email||'Usuario sin correo registrado'}</strong><small>UID: {a.id}{a.phone?` · Celular: ${a.phone}`:""}</small></div><div><span>{a.status==='active'&&dateOf(a.expiresAt)&&dateOf(a.expiresAt)!.getTime()>Date.now()?'Activo':a.status==='suspended'?'Suspendido':'Vencido'}</span><small>Plan: {a.planMonths===6?'6 meses':a.planMonths===12?'12 meses':'Plan anterior / no registrado'} · Activación: {dateLabel(a.activatedAt)} · Vence: {dateLabel(a.expiresAt)}</small></div><button onClick={()=>{setAccountUid(a.id);setAccountEmail(a.email||'');window.scrollTo({top:0,behavior:'smooth'});}}><RefreshCw size={15}/> Renovar</button><button type="button" onClick={()=>selectAccountEdit(a)}>Editar datos</button><button onClick={()=>suspend(a.id)}>Suspender</button></div>)}</div>{accounts.length===0&&<p>Las cuentas con prueba gratuita se muestran únicamente en «Pruebas gratuitas».</p>}</section>}{notice&&<p role="status" className="tech-notice">{notice}</p>}{error&&<p role="alert" className="tech-error tech-toast">{error}</p>}</main>}</div>;
+}

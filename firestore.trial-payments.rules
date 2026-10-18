@@ -1,0 +1,27 @@
+// INTEGRAR estas reglas con las reglas ACTUALES; no reemplazar reglas de otras colecciones.
+// Firebase Console > Firestore Database > Reglas
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn(){return request.auth != null;}
+  function isAdmin(){return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';}
+  function profileExists(){return signedIn() && exists(/databases/$(database)/documents/techUsers/$(request.auth.uid));}
+  function hasAccess(){return profileExists() && ((get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.status == 'active' && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.expiresAt is timestamp && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.expiresAt > request.time) || (get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.status == 'trial' && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.trialStartedAt is timestamp && get(/databases/$(database)/documents/techUsers/$(request.auth.uid)).data.trialStartedAt + duration.value(3,'m') > request.time));}
+  match /users/{uid} {allow get: if signedIn() && (request.auth.uid == uid || isAdmin()); allow list: if isAdmin(); allow write: if false;}
+  match /techUsers/{uid} {
+   allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+   allow list: if isAdmin();
+   allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['email','displayName','country','role','status','createdAt','trialApproved']) && request.resource.data.role == 'client' && request.resource.data.status == 'trial' && request.resource.data.trialApproved == true && !('trialStartedAt' in request.resource.data) && request.resource.data.createdAt == request.time && request.resource.data.email == request.auth.token.email && request.resource.data.country in ['MX','INT'];
+   allow update: if signedIn() && request.auth.uid == uid && resource.data.status == 'trial' && resource.data.trialApproved == true && !('trialStartedAt' in resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trialStartedAt']) && request.resource.data.trialStartedAt == request.time;
+   allow create, update, delete: if isAdmin() && uid != request.auth.uid && request.resource.data.role == 'client';
+  }
+  match /techCatalog/{id} {allow read: if isAdmin() || hasAccess();allow create,update,delete: if isAdmin();}
+  match /techPayments/{id} {
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['uid','email','country','method','reference','amount','currency','status','createdAt']) && request.resource.data.uid == request.auth.uid && request.resource.data.email == request.auth.token.email && request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time && request.resource.data.country in ['MX','INT'] && ((request.resource.data.country == 'MX' && request.resource.data.currency == 'MXN' && request.resource.data.amount == '700' && request.resource.data.method in ['spei','revolut']) || (request.resource.data.country == 'INT' && request.resource.data.currency == 'USD' && request.resource.data.amount == '44' && request.resource.data.method in ['paypal','revolut']));
+   allow get,list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+   allow update: if isAdmin() && resource.data.status == 'pending' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewNote','reviewedAt','reviewedBy']) && request.resource.data.status in ['approved','rejected'];
+   allow delete: if false;
+  }
+  match /{document=**} {allow read,write: if false;}
+ }
+}
