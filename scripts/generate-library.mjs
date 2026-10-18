@@ -7,3 +7,8 @@ const names={boardviews:'BoardViews',overlays:'Overlays',esquematicos:'Esquemát
 const files=[];
 async function scan(dir){for(const entry of await readdir(dir,{withFileTypes:true})){if(entry.name.startsWith('.'))continue;const path=join(dir,entry.name);if(entry.isDirectory())await scan(path);else if(entry.isFile()&&extensions.has(extname(entry.name).toLowerCase())){const parts=relative(root,path).split(/[\/]/);const category=categories[parts[0]];if(!category)continue;const extension=extname(entry.name).toLowerCase();const inferred=['.pdf','.kicad_sch','.sch'].includes(extension)?'Esquemáticos':['.psd','.png','.jpg','.jpeg','.webp','.svg','.bmp'].includes(extension)?'Overlays':'BoardViews';const isMobile=parts[0]==='celulares';const typeIndex=isMobile?3:2;const kind=names[parts[typeIndex]]||inferred;const url='biblioteca/'+parts.map(encodeURIComponent).join('/');files.push({id:'local:'+url,title:entry.name,category,brand:parts[1]||'',model:isMobile?(parts[2]&&!names[parts[2]]?parts[2]:''):(parts.length>4?parts.slice(3,-1).join(' / '):''),kind,description:kind,url});}}}
 await mkdir(root,{recursive:true});await scan(root);files.sort((a,b)=>a.url.localeCompare(b.url,'es'));await writeFile(join(root,'index.json'),JSON.stringify(files,null,2)+'\n');console.log(`Biblioteca: ${files.length} archivos indexados (carpetas vacías ocultas)`);
+
+// Generate public thumbnails and a separate public catalog at every build.
+import {spawnSync} from 'node:child_process';
+const result=spawnSync('python3',['scripts/generate-thumbnails.py'],{stdio:'inherit'});
+if(result.status!==0)throw new Error('No se pudieron generar las miniaturas públicas');
