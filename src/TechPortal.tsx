@@ -71,7 +71,7 @@ export function TechPortal(){
   let cancelled=false;
   const unsubscribeAuth=onAuthStateChanged(auth,async u=>{
    unsubscribeProfile?.();unsubscribeProfile=undefined;
-   setLoading(true);setUser(u);setProfile(null);setProfileMissing(false);setProfileFailure(false);setError('');
+   setLoading(true);setUser(u);if(u){setShowPlans(false);setRegister(false);}setProfile(null);setProfileMissing(false);setProfileFailure(false);setError('');
    if(!u){setLoading(false);return;}
    // La consulta del perfil técnico no debe depender de una consulta previa a /users:
    // esa consulta podía fallar por conectividad y bloquear incluso las pruebas nuevas.
@@ -150,9 +150,9 @@ export function TechPortal(){
    const data={name:registerName.trim(),phone:registerPhone.trim(),country};
    window.sessionStorage.setItem(registrationKey(result.user.uid),JSON.stringify(data));
    await finishRegistration(result.user,data);
-   setNotice('Registro confirmado. Selecciona tu membresía y registra el pago.');setRegister(false);
+   setNotice('Registro confirmado. Selecciona tu membresía y registra el pago.');setRegister(false);setShowPlans(false);setTab('library');setPassword('');
   }catch(e){
-   setError('El registro no terminó correctamente: '+errMessage(e)+'. Si ya existe tu cuenta, inicia sesión y usa REINTENTAR REGISTRO. No vuelvas a crear otra cuenta.');
+   setError('El registro no terminó correctamente: '+errMessage(e)+'. Si ya existe tu cuenta, inicia sesión y usa REINTENTAR REGISTRO. No vuelvas a crear otra cuenta.');setShowPlans(false);
   }finally{setBusy(false);}
  }
  async function recoverMissingProfile(){
