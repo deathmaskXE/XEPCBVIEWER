@@ -20,6 +20,18 @@ service cloud.firestore {
    allow update: if admin() && uid != request.auth.uid && request.resource.data.role == 'client';
    allow delete: if admin() && uid != request.auth.uid;
   }
+  // Una sola sesión autorizada por cuenta. El propietario puede reemplazarla.
+  match /techDeviceSessions/{uid} {
+   allow get: if signedIn() && (request.auth.uid == uid || admin());
+   allow list: if admin();
+   allow create,update: if signedIn() && request.auth.uid == uid
+     && request.resource.data.keys().hasOnly(['token','updatedAt'])
+     && request.resource.data.token is string
+     && request.resource.data.token.size() >= 50
+     && request.resource.data.token.size() <= 150
+     && request.resource.data.updatedAt == request.time;
+   allow delete: if false;
+  }
   match /techCatalog/{id} {allow read: if admin() || activeLicense();allow create,update,delete: if admin();}
   match /techPaymentRequests/{id} {
    allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
